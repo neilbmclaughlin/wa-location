@@ -26,5 +26,16 @@ server.route({
   }
 });
 
+server.route({
+  method: 'GET',
+  path: '/water-wms',
+  handler: {
+    proxy: {
+      uri: 'https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/wms{query}',
+      passThrough: true
+    }
+  }
+});
+
 await server.start();
 console.log('Server running on %s', server.info.uri);

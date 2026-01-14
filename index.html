@@ -6,9 +6,28 @@
   <style>
     body { margin: 0; padding: 0; }
     #map { height: 100vh; }
+    .layer-control {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
   </style>
 </head>
 <body>
+  <div class="layer-control">
+    <label>
+      <input type="checkbox" id="bgsToggle" checked> BGS Hydrogeology
+    </label>
+    <br>
+    <label>
+      <input type="checkbox" id="waterToggle" checked> Water Availability at Q95
+    </label>
+  </div>
   <div id="map"></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -26,7 +45,31 @@
       opacity: 1
     }).addTo(map);
     
+    const waterLayer = L.tileLayer.wms('http://localhost:3000/water-wms', {
+      layers: 'Resource_Availability_at_Q95',
+      format: 'image/png',
+      transparent: true,
+      attribution: '© Environment Agency',
+      opacity: 0.7
+    }).addTo(map);
+    
     wmsLayer.on('tileerror', (e) => console.error('WMS tile error:', e));
+    
+    document.getElementById('bgsToggle').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        map.addLayer(wmsLayer);
+      } else {
+        map.removeLayer(wmsLayer);
+      }
+    });
+    
+    document.getElementById('waterToggle').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        map.addLayer(waterLayer);
+      } else {
+        map.removeLayer(waterLayer);
+      }
+    });
   </script>
 </body>
 </html>
