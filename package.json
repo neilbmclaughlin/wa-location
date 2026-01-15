@@ -3,14 +3,17 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "nodemon server.js -e js,html,json"
+    "dev": "nodemon server.js -e js,html,json",
+    "lint": "eslint"
   },
   "dependencies": {
+    "@hapi/h2o2": "^10.0.1",
     "@hapi/hapi": "^21.3.2",
-    "@hapi/inert": "^7.1.0",
-    "@hapi/h2o2": "^10.0.1"
+    "@hapi/inert": "^7.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "neostandard": "^0.12.2",
+    "nodemon": "^3.0.1",
+    "eslint": "^9.39.2"
   }
 }
