@@ -70,6 +70,38 @@
             for (const [key, value] of Object.entries(data)) {
               popupContent += `${key}: ${value}<br>`;
             }
+            
+            // Fetch and display waterbody features if ea_wb_id exists
+            if (data.ea_wb_id) {
+              try {
+                const waterbodyResponse = await fetch(`/waterbody/${data.ea_wb_id}`);
+                const waterbodyData = await waterbodyResponse.json();
+                
+                // Add waterbody features to map
+                const waterbodyLayer = L.geoJSON(waterbodyData, {
+                  style: {
+                    color: '#0066cc',
+                    weight: 2,
+                    opacity: 0.8,
+                    fillOpacity: 0.3
+                  }
+                }).addTo(map);
+                
+                // Extract waterbody feature names
+                const featureNames = waterbodyData.features
+                  .map(feature => feature.properties.name || feature.properties.NAME)
+                  .filter(name => name)
+                  .join(', ');
+                
+                if (featureNames) {
+                  popupContent += `<b>Waterbody Features:</b> ${featureNames}<br>`;
+                }
+                
+                console.log(`Added ${waterbodyData.features.length} waterbody features`);
+              } catch (error) {
+                console.error('Failed to load waterbody data:', error);
+              }
+            }
           }
           
           marker.setPopupContent(popupContent);

@@ -154,5 +154,22 @@ server.route({
   }
 })
 
+server.route({
+  method: 'GET',
+  path: '/waterbody/{id}',
+  handler: async (request, h) => {
+    const { id } = request.params
+
+    try {
+      const response = await fetch(`https://environment.data.gov.uk/catchment-planning/WaterBody/${id}.geojson`)
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Waterbody fetch error:', error)
+      return h.response({ error: 'Failed to fetch waterbody data' }).code(500)
+    }
+  }
+})
+
 await server.start()
 console.log('Server running on %s', server.info.uri)
