@@ -47,7 +47,38 @@
     
     // Add pin if coordinates are provided
     if (lat && lng) {
-      L.marker([lat, lng]).addTo(map).bindPopup(`Postcode: ${postcode || 'Unknown'}`);
+      const marker = L.marker([lat, lng]).addTo(map);
+      marker.bindPopup(`<b>Postcode:</b> ${postcode || 'Unknown'}<br><b>Water Availability:</b> Loading...`);
+      
+      // Query layer metadata at pin location
+      const queryMetadata = async () => {
+        try {
+          console.log('Fetching water availability for:', lat, lng);
+          const response = await fetch(`/water-availability?lat=${lat}&lng=${lng}`);
+          const data = await response.json();
+          
+          console.log('Water availability data:', data);
+          
+          let popupContent = `<b>Postcode:</b> ${postcode || 'Unknown'}<br>`;
+          
+          if (data.error) {
+            popupContent += `<b>Water Availability:</b> ${data.error}`;
+          } else {
+            // Show all properties to see what's available
+            popupContent += `<b>Properties:</b><br>`;
+            for (const [key, value] of Object.entries(data)) {
+              popupContent += `${key}: ${value}<br>`;
+            }
+          }
+          
+          marker.setPopupContent(popupContent);
+        } catch (error) {
+          console.error('Metadata error:', error);
+          marker.setPopupContent(`<b>Postcode:</b> ${postcode || 'Unknown'}<br>Error loading metadata`);
+        }
+      };
+      
+      queryMetadata();
     }
     
     const wmsLayer = L.tileLayer.wms('http://localhost:3000/wms', {
