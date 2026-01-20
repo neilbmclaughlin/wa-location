@@ -11,14 +11,45 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 // Define coordinate systems
 proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.15,0.247,0.842,-20.489 +units=m +no_defs')
 
-// Load GeoJSON data at startup
+// Load GeoJSON data at startup and transform coordinates
 let waterAvailabilityData
 try {
   const geojsonData = await fs.readFile('./Resource_Availability_at_Q95.geojson', 'utf8')
-  waterAvailabilityData = JSON.parse(geojsonData)
-  console.log(`Loaded ${waterAvailabilityData.features.length} water availability features`)
+  const rawData = JSON.parse(geojsonData)
+
+  // Transform coordinates from EPSG:27700 to EPSG:4326
+  waterAvailabilityData = {
+    ...rawData,
+    features: rawData.features.map(feature => ({
+      ...feature,
+      geometry: transformGeometry(feature.geometry)
+    }))
+  }
+
+  console.log(`Loaded and transformed ${waterAvailabilityData.features.length} water availability features`)
 } catch (error) {
   console.error('Failed to load GeoJSON:', error)
+}
+
+function transformGeometry (geometry) {
+  if (geometry.type === 'Polygon') {
+    return {
+      ...geometry,
+      coordinates: geometry.coordinates.map(ring =>
+        ring.map(coord => proj4('EPSG:27700', 'EPSG:4326', coord))
+      )
+    }
+  } else if (geometry.type === 'MultiPolygon') {
+    return {
+      ...geometry,
+      coordinates: geometry.coordinates.map(polygon =>
+        polygon.map(ring =>
+          ring.map(coord => proj4('EPSG:27700', 'EPSG:4326', coord))
+        )
+      )
+    }
+  }
+  return geometry
 }
 
 const server = Hapi.server({
@@ -98,9 +129,7 @@ server.route({
       return h.response({ error: 'Data not available' }).code(500)
     }
 
-    // Convert WGS84 lat/lng to British National Grid
-    const [x, y] = proj4('EPSG:4326', 'EPSG:27700', [parseFloat(lng), parseFloat(lat)])
-    const queryPoint = point([x, y])
+    const queryPoint = point([parseFloat(lng), parseFloat(lat)])
 
     for (const feature of waterAvailabilityData.features) {
       if (feature.geometry && (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon')) {
@@ -111,6 +140,17 @@ server.route({
     }
 
     return { error: 'No data found for location' }
+  }
+})
+
+server.route({
+  method: 'GET',
+  path: '/geojson/water-availability',
+  handler: (request, h) => {
+    if (!waterAvailabilityData) {
+      return h.response({ error: 'Data not available' }).code(500)
+    }
+    return waterAvailabilityData
   }
 })
 

@@ -28,7 +28,8 @@
       <input type="checkbox" id="waterToggle" checked> Water Availability at Q95
     </label>
     <div id="waterLegend" style="margin-top: 10px;">
-      <img src="http://localhost:3000/water-wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetLegendGraphic&LAYER=Resource_Availability_at_Q95&FORMAT=image/png" alt="Water Availability Legend" style="max-width: 100%;">
+      <div><strong>Water Availability:</strong></div>
+      <div id="legendItems"></div>
     </div>
   </div>
   <div id="map"></div>
@@ -89,13 +90,65 @@
       opacity: 1
     }).addTo(map);
     
-    const waterLayer = L.tileLayer.wms('http://localhost:3000/water-wms', {
-      layers: 'Resource_Availability_at_Q95',
-      format: 'image/png',
-      transparent: true,
-      attribution: '© Environment Agency',
-      opacity: 0.7
-    }).addTo(map);
+    // Color mapping for water availability
+    const colorMap = {
+      'red': '#ff0000',
+      'yellow': '#ffff00',
+      'green': '#00ff00',
+      'grey': '#808080',
+      'unknown': '#cccccc'
+    };
+    
+    function getColor(properties) {
+      const value = properties.camscdsq95;
+      const lowerValue = value ? value.toLowerCase() : 'unknown';
+      return colorMap[lowerValue] || colorMap['unknown'];
+    }
+    
+    // Build legend from color map
+    const legendItems = document.getElementById('legendItems');
+    Object.entries(colorMap).forEach(([label, color]) => {
+      if (label !== 'unknown') {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; align-items: center; margin: 2px 0;';
+        item.innerHTML = `<div style="width: 15px; height: 15px; background: ${color}; margin-right: 5px;"></div><span>${label}</span>`;
+        legendItems.appendChild(item);
+      }
+    });
+    
+    // Load GeoJSON water availability data
+    let waterGeoJsonLayer;
+    fetch('/geojson/water-availability')
+      .then(response => response.json())
+      .then(data => {
+        waterGeoJsonLayer = L.geoJSON(data, {
+          style: feature => ({
+            fillColor: getColor(feature.properties),
+            weight: 1,
+            opacity: 1,
+            color: 'white',
+            fillOpacity: 0.7
+          }),
+          onEachFeature: (feature, layer) => {
+            const originalStyle = {
+              fillColor: getColor(feature.properties),
+              weight: 1,
+              opacity: 1,
+              color: 'white',
+              fillOpacity: 0.7
+            };
+            
+            layer.on('click', () => {
+              let popupContent = '<b>Water Availability Data:</b><br>';
+              for (const [key, value] of Object.entries(feature.properties)) {
+                popupContent += `${key}: ${value}<br>`;
+              }
+              layer.bindPopup(popupContent).openPopup();
+              layer.setStyle(originalStyle);
+            });
+          }
+        }).addTo(map);
+      });
     
     wmsLayer.on('tileerror', (e) => console.error('WMS tile error:', e));
     
@@ -110,10 +163,10 @@
     document.getElementById('waterToggle').addEventListener('change', (e) => {
       const legend = document.getElementById('waterLegend');
       if (e.target.checked) {
-        map.addLayer(waterLayer);
+        if (waterGeoJsonLayer) map.addLayer(waterGeoJsonLayer);
         legend.style.display = 'block';
       } else {
-        map.removeLayer(waterLayer);
+        if (waterGeoJsonLayer) map.removeLayer(waterGeoJsonLayer);
         legend.style.display = 'none';
       }
     });
