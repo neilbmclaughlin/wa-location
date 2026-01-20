@@ -10,7 +10,9 @@
     "@hapi/h2o2": "^10.0.1",
     "@hapi/hapi": "^21.3.2",
     "@hapi/inert": "^7.1.0",
+    "@turf/boolean-intersects": "^7.3.2",
     "@turf/boolean-point-in-polygon": "^7.3.2",
+    "@turf/buffer": "^7.3.2",
     "proj4": "^2.20.2"
   },
   "devDependencies": {
