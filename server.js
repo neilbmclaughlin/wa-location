@@ -52,12 +52,8 @@ server.route({
     const { postcode } = request.payload
 
     try {
-      console.log(`Fetching postcode: ${postcode}`)
       const response = await fetch(`https://api.postcodes.io/postcodes/${postcode}`)
-      console.log(`Response status: ${response.status}`)
-
       const data = await response.json()
-      console.log('Response data:', data)
 
       if (data.status === 200) {
         return {
