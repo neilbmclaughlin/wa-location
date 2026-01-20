@@ -27,6 +27,9 @@
     <label>
       <input type="checkbox" id="waterToggle" checked> Water Availability at Q95
     </label>
+    <div id="waterLegend" style="margin-top: 10px;">
+      <img src="http://localhost:3000/water-wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetLegendGraphic&LAYER=Resource_Availability_at_Q95&FORMAT=image/png" alt="Water Availability Legend" style="max-width: 100%;">
+    </div>
   </div>
   <div id="map"></div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -69,10 +72,13 @@
     });
     
     document.getElementById('waterToggle').addEventListener('change', (e) => {
+      const legend = document.getElementById('waterLegend');
       if (e.target.checked) {
         map.addLayer(waterLayer);
+        legend.style.display = 'block';
       } else {
         map.removeLayer(waterLayer);
+        legend.style.display = 'none';
       }
     });
   </script>
