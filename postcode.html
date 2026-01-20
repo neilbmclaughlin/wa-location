@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Enter Postcode</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; padding: 20px; }
+    input { width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; }
+    button { width: 100%; padding: 10px; background: #007cba; color: white; border: none; font-size: 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Enter Postcode</h1>
+  <form onsubmit="submitPostcode(event)">
+    <input type="text" id="postcode" placeholder="e.g. SW1A 1AA" required>
+    <button type="submit">View Map</button>
+  </form>
+  
+  <script>
+    async function submitPostcode(event) {
+      event.preventDefault()
+      const postcode = document.getElementById('postcode').value
+      
+      const response = await fetch('/postcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postcode })
+      })
+      
+      const result = await response.json()
+      if (result.lat && result.lng) {
+        window.location.href = `/?lat=${result.lat}&lng=${result.lng}&postcode=${result.postcode}`
+      } else {
+        alert(result.error || 'Failed to find postcode')
+      }
+    }
+  </script>
+</body>
+</html>
