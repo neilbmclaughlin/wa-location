@@ -5,7 +5,7 @@ A web application that displays water availability data and related hydrological
 ## Features
 
 - **Postcode Search**: Enter a UK postcode to center the map and display relevant data
-- **Water Availability Layer**: Interactive polygons showing water availability status (red, yellow, green, grey)
+- **Water Availability Layer**: Interactive WMS tiles showing water availability status with clickable polygons
 - **Geological Layer**: BGS Hydrogeology data (optional overlay)
 - **Monitoring Sites**: Water monitoring site locations as clickable markers
 - **Waterbody Features**: Displays catchment areas and river lines within 1km of the postcode
@@ -14,8 +14,10 @@ A web application that displays water availability data and related hydrological
 ## Data Sources
 
 ### Water Availability Data
-- **Source**: Local GeoJSON file (`Resource_Availability_at_Q95.geojson`)
-- **Content**: Water resource availability polygons with classification data
+- **Display**: WMS tiles from Environment Agency service
+- **Interaction**: WMS GetFeatureInfo for polygon clicks
+- **Spatial Queries**: WFS for finding polygons within radius
+- **Service**: `https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/`
 - **Properties**: Includes `camscdsq95` (color classification) and `ea_wb_id` (waterbody identifier)
 
 ### Geological Data
@@ -45,11 +47,15 @@ A web application that displays water availability data and related hydrological
 
 - **Backend**: Node.js with Hapi.js framework
 - **Frontend**: Leaflet.js for mapping, Turf.js for spatial operations
-- **Coordinate Systems**: 
-  - Input data: British National Grid (EPSG:27700)
-  - Display: WGS84 (EPSG:4326)
-  - Transformation: proj4 library
-- **Performance**: Viewport-based filtering for large datasets
+- **Coordinate Systems**: WGS84 (EPSG:4326) throughout with proper OGC service configuration
+- **Performance**: WMS tiles for display, WFS for spatial queries, viewport-based filtering
+
+## Service Integration
+
+- **WMS (Web Map Service)**: Fast tile rendering and GetFeatureInfo queries
+- **WFS (Web Feature Service)**: Spatial queries for polygons within radius
+- **ArcGIS REST**: Monitoring sites and waterbody feature data
+- **OGC Standards**: Proper coordinate system handling across all services
 
 ## Usage
 
@@ -64,7 +70,10 @@ A web application that displays water availability data and related hydrological
 
 - `GET /postcode` - Postcode input page
 - `POST /postcode` - Geocode postcode to coordinates
-- `GET /water-availability` - Water availability GeoJSON data
+- `GET /water-availability` - WMS GetFeatureInfo for polygon clicks
+- `GET /water-features-radius` - WFS spatial query for polygons within radius
 - `GET /monitoring-sites` - Monitoring sites GeoJSON data
 - `GET /waterbody/{id}` - Waterbody features for specific ID
 - `GET /wms` - Proxy for BGS geological WMS service
+- `GET /water-wms` - Proxy for EA water availability WMS service
+- `GET /water-wfs` - Proxy for EA water availability WFS service

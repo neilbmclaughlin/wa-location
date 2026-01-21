@@ -61,58 +61,50 @@
         try {
           console.log('Fetching polygons within 1km of:', lat, lng);
           
-          // Get all water availability data
-          const response = await fetch('/water-availability');
-          const allData = await response.json();
-          
-          // Create 1km buffer around the point
-          const centerPoint = turf.point([parseFloat(lng), parseFloat(lat)]);
-          const buffered = turf.buffer(centerPoint, 1, {units: 'kilometers'});
-          
-          // Find all polygons that intersect with the 1km buffer
-          const nearbyPolygons = allData.features.filter(feature => 
-            turf.booleanIntersects(feature, buffered)
-          );
-          
-          console.log(`Found ${nearbyPolygons.length} polygons within 1km`);
+          // Get all polygons within 1km using WFS
+          const response = await fetch(`/water-features-radius?lat=${lat}&lng=${lng}&radius=1000`);
+          const data = await response.json();
           
           let popupContent = `<b>Postcode:</b> ${postcode || 'Unknown'}<br>`;
-          popupContent += `<b>Nearby Polygons:</b> ${nearbyPolygons.length}<br>`;
           
-          // Collect all unique ea_wb_id values
-          const waterbodyIds = [...new Set(
-            nearbyPolygons
-              .map(feature => feature.properties.ea_wb_id)
-              .filter(id => id)
-          )];
-          
-          console.log(`Found ${waterbodyIds.length} unique waterbody IDs`);
-          
-          // Fetch waterbody features for all IDs
-          const waterbodyFeatures = [];
-          for (const id of waterbodyIds) {
-            try {
-              const waterbodyResponse = await fetch(`/waterbody/${id}`);
-              const waterbodyData = await waterbodyResponse.json();
-              waterbodyFeatures.push(...waterbodyData.features);
-            } catch (error) {
-              console.error(`Failed to load waterbody ${id}:`, error);
-            }
-          }
-          
-          // Add all waterbody features to map as a single layer
-          if (waterbodyFeatures.length > 0) {
-            const waterbodyLayer = L.geoJSON(waterbodyFeatures, {
-              style: {
-                color: '#0066cc',
-                weight: 2,
-                opacity: 0.8,
-                fillOpacity: 0.3
-              }
-            }).addTo(map);
+          if (data.features && data.features.length > 0) {
+            popupContent += `<b>Nearby Polygons:</b> ${data.features.length}<br>`;
             
-            console.log(`Added ${waterbodyFeatures.length} waterbody features to map`);
-            popupContent += `<b>Waterbody Features:</b> ${waterbodyFeatures.length}<br>`;
+            // Collect all unique ea_wb_id values
+            const waterbodyIds = [...new Set(
+              data.features
+                .map(feature => feature.properties.ea_wb_id)
+                .filter(id => id)
+            )];
+            
+            // Fetch waterbody features for all IDs
+            const waterbodyFeatures = [];
+            for (const id of waterbodyIds) {
+              try {
+                const waterbodyResponse = await fetch(`/waterbody/${id}`);
+                const waterbodyData = await waterbodyResponse.json();
+                waterbodyFeatures.push(...waterbodyData.features);
+              } catch (error) {
+                console.error(`Failed to load waterbody ${id}:`, error);
+              }
+            }
+            
+            // Add all waterbody features to map as a single layer
+            if (waterbodyFeatures.length > 0) {
+              const waterbodyLayer = L.geoJSON(waterbodyFeatures, {
+                style: {
+                  color: '#0066cc',
+                  weight: 2,
+                  opacity: 0.8,
+                  fillOpacity: 0.3
+                }
+              }).addTo(map);
+              
+              console.log(`Added ${waterbodyFeatures.length} waterbody features to map`);
+              popupContent += `<b>Waterbody Features:</b> ${waterbodyFeatures.length}<br>`;
+            }
+          } else {
+            popupContent += `<b>Water Availability:</b> No polygons found within 1km`;
           }
           
           marker.setPopupContent(popupContent);
@@ -187,86 +179,65 @@
       }
     });
     
-    // Load GeoJSON water availability data
-    let waterGeoJsonLayer;
-    let allWaterData;
+    // Load water availability as WMS layer
+    const waterLayer = L.tileLayer.wms('http://localhost:3000/water-wms', {
+      layers: 'Resource_Availability_at_Q95',
+      format: 'image/png',
+      transparent: true,
+      attribution: '© Environment Agency',
+      opacity: 0.7
+    }).addTo(map);
     
-    fetch('/water-availability')
-      .then(response => response.json())
-      .then(data => {
-        allWaterData = data;
-        updateWaterLayer();
-      });
-    
-    function updateWaterLayer() {
-      if (waterGeoJsonLayer) {
-        map.removeLayer(waterGeoJsonLayer);
-      }
-      
+    // Add click handler for GetFeatureInfo
+    map.on('click', async (e) => {
       const bounds = map.getBounds();
-      const filteredFeatures = allWaterData.features.filter(feature => {
-        const featureBounds = L.geoJSON(feature).getBounds();
-        return bounds.intersects(featureBounds);
-      });
+      const size = map.getSize();
+      const point = map.latLngToContainerPoint(e.latlng);
       
-      waterGeoJsonLayer = L.geoJSON({...allWaterData, features: filteredFeatures}, {
-        style: feature => ({
-          fillColor: getColor(feature.properties),
-          weight: 1,
-          opacity: 1,
-          color: 'white',
-          fillOpacity: 0.7
-        }),
-        onEachFeature: (feature, layer) => {
-          const originalStyle = {
-            fillColor: getColor(feature.properties),
-            weight: 1,
-            opacity: 1,
-            color: 'white',
-            fillOpacity: 0.7
-          };
+      try {
+        const url = `/water-availability?bbox=${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}&width=${size.x}&height=${size.y}&x=${Math.round(point.x)}&y=${Math.round(point.y)}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          const feature = data.features[0];
+          let popupContent = '<b>Water Availability Data:</b><br>';
           
-          layer.on('click', async () => {
-            let popupContent = '<b>Water Availability Data:</b><br>';
-            for (const [key, value] of Object.entries(feature.properties)) {
-              popupContent += `${key}: ${value}<br>`;
-            }
-            
-            // Fetch and display waterbody feature names if ea_wb_id exists
-            if (feature.properties.ea_wb_id) {
-              try {
-                const waterbodyResponse = await fetch(`/waterbody/${feature.properties.ea_wb_id}`);
-                const waterbodyData = await waterbodyResponse.json();
-                
-                // Extract waterbody feature names
-                const featureNames = waterbodyData.features
-                  .map(feature => feature.properties.name || feature.properties.NAME)
-                  .filter(name => name);
-                
-                if (featureNames.length > 0) {
-                  popupContent += `<b>Waterbody Features:</b><br>`;
-                  featureNames.forEach(name => {
-                    popupContent += `• ${name}<br>`;
-                  });
-                }
-              } catch (error) {
-                console.error('Failed to load waterbody data:', error);
+          for (const [key, value] of Object.entries(feature.properties)) {
+            popupContent += `${key}: ${value}<br>`;
+          }
+          
+          // Fetch waterbody features if ea_wb_id exists
+          if (feature.properties.ea_wb_id) {
+            try {
+              const waterbodyResponse = await fetch(`/waterbody/${feature.properties.ea_wb_id}`);
+              const waterbodyData = await waterbodyResponse.json();
+              
+              const featureNames = waterbodyData.features
+                .map(f => f.properties.name || f.properties.NAME)
+                .filter(name => name);
+              
+              if (featureNames.length > 0) {
+                popupContent += `<b>Waterbody Features:</b><br>`;
+                featureNames.forEach(name => {
+                  popupContent += `• ${name}<br>`;
+                });
               }
+            } catch (error) {
+              console.error('Failed to load waterbody data:', error);
             }
-            
-            layer.bindPopup(popupContent).openPopup();
-            layer.setStyle(originalStyle);
-          });
+          }
+          
+          L.popup().setLatLng(e.latlng).setContent(popupContent).openOn(map);
+        } else {
+          // Show a popup indicating no data found
+          L.popup().setLatLng(e.latlng).setContent('<b>No water availability data found at this location</b>').openOn(map);
         }
-      });
-      
-      if (document.getElementById('waterToggle').checked) {
-        waterGeoJsonLayer.addTo(map);
+      } catch (error) {
+        console.error('GetFeatureInfo error:', error);
       }
-    }
-    
-    // Update layer when map moves or zooms
-    map.on('moveend zoomend', updateWaterLayer);
+    });
     
     wmsLayer.on('tileerror', (e) => console.error('WMS tile error:', e));
     
@@ -281,10 +252,10 @@
     document.getElementById('waterToggle').addEventListener('change', (e) => {
       const legend = document.getElementById('waterLegend');
       if (e.target.checked) {
-        if (waterGeoJsonLayer) map.addLayer(waterGeoJsonLayer);
+        map.addLayer(waterLayer);
         legend.style.display = 'block';
       } else {
-        if (waterGeoJsonLayer) map.removeLayer(waterGeoJsonLayer);
+        map.removeLayer(waterLayer);
         legend.style.display = 'none';
       }
     });

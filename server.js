@@ -1,54 +1,8 @@
 import Hapi from '@hapi/hapi'
 import Inert from '@hapi/inert'
 import H2o2 from '@hapi/h2o2'
-import fs from 'fs/promises'
-import proj4 from 'proj4'
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-
-// Define coordinate systems
-proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.15,0.247,0.842,-20.489 +units=m +no_defs')
-
-// Load GeoJSON data at startup and transform coordinates
-let waterAvailabilityData
-try {
-  const geojsonData = await fs.readFile('./Resource_Availability_at_Q95.geojson', 'utf8')
-  const rawData = JSON.parse(geojsonData)
-
-  // Transform coordinates from EPSG:27700 to EPSG:4326
-  waterAvailabilityData = {
-    ...rawData,
-    features: rawData.features.map(feature => ({
-      ...feature,
-      geometry: transformGeometry(feature.geometry)
-    }))
-  }
-
-  console.log(`Loaded and transformed ${waterAvailabilityData.features.length} water availability features`)
-} catch (error) {
-  console.error('Failed to load GeoJSON:', error)
-}
-
-function transformGeometry (geometry) {
-  if (geometry.type === 'Polygon') {
-    return {
-      ...geometry,
-      coordinates: geometry.coordinates.map(ring =>
-        ring.map(coord => proj4('EPSG:27700', 'EPSG:4326', coord))
-      )
-    }
-  } else if (geometry.type === 'MultiPolygon') {
-    return {
-      ...geometry,
-      coordinates: geometry.coordinates.map(polygon =>
-        polygon.map(ring =>
-          ring.map(coord => proj4('EPSG:27700', 'EPSG:4326', coord))
-        )
-      )
-    }
-  }
-  return geometry
-}
 
 const server = Hapi.server({
   port: 3000,
@@ -108,12 +62,75 @@ server.route({
 
 server.route({
   method: 'GET',
-  path: '/water-availability',
-  handler: (request, h) => {
-    if (!waterAvailabilityData) {
-      return h.response({ error: 'Data not available' }).code(500)
+  path: '/water-wms',
+  handler: {
+    proxy: {
+      uri: 'https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/wms{query}',
+      passThrough: true
     }
-    return waterAvailabilityData
+  }
+})
+
+server.route({
+  method: 'GET',
+  path: '/water-wfs',
+  handler: {
+    proxy: {
+      uri: 'https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/wfs{query}',
+      passThrough: true
+    }
+  }
+})
+
+server.route({
+  method: 'GET',
+  path: '/water-availability',
+  handler: async (request, h) => {
+    const { bbox, width, height, x, y } = request.query
+
+    try {
+      // Try WMS GetFeatureInfo with explicit coordinate system specification
+      const response = await fetch(`https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&LAYERS=Resource_Availability_at_Q95&QUERY_LAYERS=Resource_Availability_at_Q95&STYLES=&BBOX=${bbox}&FEATURE_COUNT=10&HEIGHT=${height}&WIDTH=${width}&FORMAT=image/png&INFO_FORMAT=application/json&CRS=EPSG:4326&I=${x}&J=${y}`)
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('WMS GetFeatureInfo error:', error)
+      return h.response({ error: 'Failed to fetch water availability data' }).code(500)
+    }
+  }
+})
+
+server.route({
+  method: 'GET',
+  path: '/water-features-radius',
+  handler: async (request, h) => {
+    const { lat, lng, radius = 1000 } = request.query
+
+    try {
+      // Calculate precise bbox for 1km radius (1 degree ≈ 111km at equator)
+      const radiusInDegrees = parseFloat(radius) / 111000 // Convert meters to degrees
+      const minLng = parseFloat(lng) - radiusInDegrees
+      const minLat = parseFloat(lat) - radiusInDegrees
+      const maxLng = parseFloat(lng) + radiusInDegrees
+      const maxLat = parseFloat(lat) + radiusInDegrees
+
+      const wfsUrl = `https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/wfs?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAME=Resource_Availability_at_Q95&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&BBOX=${minLng},${minLat},${maxLng},${maxLat},EPSG:4326`
+
+      const response = await fetch(wfsUrl)
+
+      if (!response.ok) {
+        console.error('WFS response not ok:', response.status, response.statusText)
+        const errorText = await response.text()
+        console.error('WFS error response:', errorText)
+        return h.response({ error: 'WFS service error', details: errorText }).code(500)
+      }
+
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('WFS query error:', error)
+      return h.response({ error: 'Failed to fetch features within radius', details: error.message }).code(500)
+    }
   }
 })
 
