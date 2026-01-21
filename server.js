@@ -2,8 +2,6 @@ import Hapi from '@hapi/hapi'
 import Inert from '@hapi/inert'
 import H2o2 from '@hapi/h2o2'
 import fs from 'fs/promises'
-import booleanPointInPolygon from '@turf/boolean-point-in-polygon'
-import { point } from '@turf/helpers'
 import proj4 from 'proj4'
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
@@ -83,17 +81,6 @@ server.route({
 })
 
 server.route({
-  method: 'GET',
-  path: '/water-wms',
-  handler: {
-    proxy: {
-      uri: 'https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/wms{query}',
-      passThrough: true
-    }
-  }
-})
-
-server.route({
   method: 'POST',
   path: '/postcode',
   handler: async (request, h) => {
@@ -116,30 +103,6 @@ server.route({
       console.error('Fetch error:', error)
       return h.response({ error: 'Service unavailable' }).code(500)
     }
-  }
-})
-
-server.route({
-  method: 'GET',
-  path: '/water-availability',
-  handler: async (request, h) => {
-    const { lat, lng } = request.query
-
-    if (!waterAvailabilityData) {
-      return h.response({ error: 'Data not available' }).code(500)
-    }
-
-    const queryPoint = point([parseFloat(lng), parseFloat(lat)])
-
-    for (const feature of waterAvailabilityData.features) {
-      if (feature.geometry && (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon')) {
-        if (booleanPointInPolygon(queryPoint, feature.geometry)) {
-          return feature.properties
-        }
-      }
-    }
-
-    return { error: 'No data found for location' }
   }
 })
 
