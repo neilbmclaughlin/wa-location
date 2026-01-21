@@ -28,7 +28,7 @@
       
       const result = await response.json()
       if (result.lat && result.lng) {
-        window.location.href = `/?lat=${result.lat}&lng=${result.lng}&postcode=${result.postcode}`
+        window.location.href = `/location?lat=${result.lat}&lng=${result.lng}&postcode=${result.postcode}`
       } else {
         alert(result.error || 'Failed to find postcode')
       }

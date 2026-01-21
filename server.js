@@ -14,13 +14,13 @@ await server.register([Inert, H2o2])
 server.route({
   method: 'GET',
   path: '/',
-  handler: (request, h) => h.file('index.html')
+  handler: (request, h) => h.file('postcode.html')
 })
 
 server.route({
   method: 'GET',
-  path: '/postcode',
-  handler: (request, h) => h.file('postcode.html')
+  path: '/location',
+  handler: (request, h) => h.file('index.html')
 })
 
 server.route({
