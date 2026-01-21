@@ -21,7 +21,7 @@
 <body>
   <div class="layer-control">
     <label>
-      <input type="checkbox" id="bgsToggle" checked> BGS Hydrogeology
+      <input type="checkbox" id="bgsToggle"> BGS Hydrogeology
     </label>
     <br>
     <label>
@@ -131,7 +131,7 @@
       transparent: true,
       attribution: '© BGS',
       opacity: 1
-    }).addTo(map);
+    });
     
     // Add monitoring sites layer using GeoJSON
     let monitoringSitesLayer;
