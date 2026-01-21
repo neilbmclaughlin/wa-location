@@ -171,5 +171,20 @@ server.route({
   }
 })
 
+server.route({
+  method: 'GET',
+  path: '/monitoring-sites-geojson',
+  handler: async (request, h) => {
+    try {
+      const response = await fetch('https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/ArcGIS/rest/services/WFD_monitoring_sites/FeatureServer/0/query?where=1%3D1&outFields=*&f=geojson')
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Monitoring sites fetch error:', error)
+      return h.response({ error: 'Failed to fetch monitoring sites' }).code(500)
+    }
+  }
+})
+
 await server.start()
 console.log('Server running on %s', server.info.uri)

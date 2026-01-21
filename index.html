@@ -27,6 +27,10 @@
     <label>
       <input type="checkbox" id="waterToggle" checked> Water Availability at Q95
     </label>
+    <br>
+    <label>
+      <input type="checkbox" id="monitoringToggle"> Water Monitoring Sites
+    </label>
     <div id="waterLegend" style="margin-top: 10px;">
       <div><strong>Water Availability:</strong></div>
       <div id="legendItems"></div>
@@ -129,6 +133,34 @@
       opacity: 1
     }).addTo(map);
     
+    // Add monitoring sites layer using GeoJSON
+    let monitoringSitesLayer;
+    fetch('/monitoring-sites-geojson')
+      .then(response => response.json())
+      .then(data => {
+        monitoringSitesLayer = L.geoJSON(data, {
+          pointToLayer: (feature, latlng) => {
+            return L.circleMarker(latlng, {
+              radius: 4,
+              fillColor: '#ff7800',
+              color: '#000',
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            });
+          },
+          onEachFeature: (feature, layer) => {
+            if (feature.properties) {
+              let popupContent = '<b>Monitoring Site:</b><br>';
+              for (const [key, value] of Object.entries(feature.properties)) {
+                popupContent += `${key}: ${value}<br>`;
+              }
+              layer.bindPopup(popupContent);
+            }
+          }
+        });
+      });
+    
     // Color mapping for water availability
     const colorMap = {
       'red': '#ff0000',
@@ -230,6 +262,14 @@
       } else {
         if (waterGeoJsonLayer) map.removeLayer(waterGeoJsonLayer);
         legend.style.display = 'none';
+      }
+    });
+    
+    document.getElementById('monitoringToggle').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        map.addLayer(monitoringSitesLayer);
+      } else {
+        map.removeLayer(monitoringSitesLayer);
       }
     });
   </script>
