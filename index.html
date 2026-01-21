@@ -189,60 +189,84 @@
     
     // Load GeoJSON water availability data
     let waterGeoJsonLayer;
+    let allWaterData;
+    
     fetch('/geojson/water-availability')
       .then(response => response.json())
       .then(data => {
-        waterGeoJsonLayer = L.geoJSON(data, {
-          style: feature => ({
+        allWaterData = data;
+        updateWaterLayer();
+      });
+    
+    function updateWaterLayer() {
+      if (waterGeoJsonLayer) {
+        map.removeLayer(waterGeoJsonLayer);
+      }
+      
+      const bounds = map.getBounds();
+      const filteredFeatures = allWaterData.features.filter(feature => {
+        const featureBounds = L.geoJSON(feature).getBounds();
+        return bounds.intersects(featureBounds);
+      });
+      
+      waterGeoJsonLayer = L.geoJSON({...allWaterData, features: filteredFeatures}, {
+        style: feature => ({
+          fillColor: getColor(feature.properties),
+          weight: 1,
+          opacity: 1,
+          color: 'white',
+          fillOpacity: 0.7
+        }),
+        onEachFeature: (feature, layer) => {
+          const originalStyle = {
             fillColor: getColor(feature.properties),
             weight: 1,
             opacity: 1,
             color: 'white',
             fillOpacity: 0.7
-          }),
-          onEachFeature: (feature, layer) => {
-            const originalStyle = {
-              fillColor: getColor(feature.properties),
-              weight: 1,
-              opacity: 1,
-              color: 'white',
-              fillOpacity: 0.7
-            };
+          };
+          
+          layer.on('click', async () => {
+            let popupContent = '<b>Water Availability Data:</b><br>';
+            for (const [key, value] of Object.entries(feature.properties)) {
+              popupContent += `${key}: ${value}<br>`;
+            }
             
-            layer.on('click', async () => {
-              let popupContent = '<b>Water Availability Data:</b><br>';
-              for (const [key, value] of Object.entries(feature.properties)) {
-                popupContent += `${key}: ${value}<br>`;
-              }
-              
-              // Fetch and display waterbody feature names if ea_wb_id exists
-              if (feature.properties.ea_wb_id) {
-                try {
-                  const waterbodyResponse = await fetch(`/waterbody/${feature.properties.ea_wb_id}`);
-                  const waterbodyData = await waterbodyResponse.json();
-                  
-                  // Extract waterbody feature names
-                  const featureNames = waterbodyData.features
-                    .map(feature => feature.properties.name || feature.properties.NAME)
-                    .filter(name => name);
-                  
-                  if (featureNames.length > 0) {
-                    popupContent += `<b>Waterbody Features:</b><br>`;
-                    featureNames.forEach(name => {
-                      popupContent += `• ${name}<br>`;
-                    });
-                  }
-                } catch (error) {
-                  console.error('Failed to load waterbody data:', error);
+            // Fetch and display waterbody feature names if ea_wb_id exists
+            if (feature.properties.ea_wb_id) {
+              try {
+                const waterbodyResponse = await fetch(`/waterbody/${feature.properties.ea_wb_id}`);
+                const waterbodyData = await waterbodyResponse.json();
+                
+                // Extract waterbody feature names
+                const featureNames = waterbodyData.features
+                  .map(feature => feature.properties.name || feature.properties.NAME)
+                  .filter(name => name);
+                
+                if (featureNames.length > 0) {
+                  popupContent += `<b>Waterbody Features:</b><br>`;
+                  featureNames.forEach(name => {
+                    popupContent += `• ${name}<br>`;
+                  });
                 }
+              } catch (error) {
+                console.error('Failed to load waterbody data:', error);
               }
-              
-              layer.bindPopup(popupContent).openPopup();
-              layer.setStyle(originalStyle);
-            });
-          }
-        }).addTo(map);
+            }
+            
+            layer.bindPopup(popupContent).openPopup();
+            layer.setStyle(originalStyle);
+          });
+        }
       });
+      
+      if (document.getElementById('waterToggle').checked) {
+        waterGeoJsonLayer.addTo(map);
+      }
+    }
+    
+    // Update layer when map moves or zooms
+    map.on('moveend zoomend', updateWaterLayer);
     
     wmsLayer.on('tileerror', (e) => console.error('WMS tile error:', e));
     
