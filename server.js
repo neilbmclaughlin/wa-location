@@ -108,7 +108,7 @@ server.route({
 
 server.route({
   method: 'GET',
-  path: '/geojson/water-availability',
+  path: '/water-availability',
   handler: (request, h) => {
     if (!waterAvailabilityData) {
       return h.response({ error: 'Data not available' }).code(500)
@@ -136,7 +136,7 @@ server.route({
 
 server.route({
   method: 'GET',
-  path: '/monitoring-sites-geojson',
+  path: '/monitoring-sites',
   handler: async (request, h) => {
     try {
       const response = await fetch('https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/ArcGIS/rest/services/WFD_monitoring_sites/FeatureServer/0/query?where=1%3D1&outFields=*&f=geojson')

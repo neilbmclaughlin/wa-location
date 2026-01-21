@@ -62,7 +62,7 @@
           console.log('Fetching polygons within 1km of:', lat, lng);
           
           // Get all water availability data
-          const response = await fetch('/geojson/water-availability');
+          const response = await fetch('/water-availability');
           const allData = await response.json();
           
           // Create 1km buffer around the point
@@ -135,7 +135,7 @@
     
     // Add monitoring sites layer using GeoJSON
     let monitoringSitesLayer;
-    fetch('/monitoring-sites-geojson')
+    fetch('/monitoring-sites')
       .then(response => response.json())
       .then(data => {
         monitoringSitesLayer = L.geoJSON(data, {
@@ -191,7 +191,7 @@
     let waterGeoJsonLayer;
     let allWaterData;
     
-    fetch('/geojson/water-availability')
+    fetch('/water-availability')
       .then(response => response.json())
       .then(data => {
         allWaterData = data;
