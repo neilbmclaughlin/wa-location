@@ -28,6 +28,10 @@
       <input type="checkbox" id="waterToggle" checked> Water Availability at Q95
     </label>
     <br>
+    <label style="margin-left: 20px;">
+      <input type="checkbox" id="boundaryToggle"> Show Boundaries
+    </label>
+    <br>
     <label>
       <input type="checkbox" id="monitoringToggle"> Water Monitoring Sites
     </label>
@@ -212,11 +216,47 @@
     // Load water availability as WMS layer
     const waterLayer = L.tileLayer.wms('http://localhost:3000/water-wms', {
       layers: 'Resource_Availability_at_Q95',
+      styles: 'ResourceAvailability_at_Q95_04_25',
       format: 'image/png',
       transparent: true,
       attribution: '© Environment Agency',
       opacity: 0.7
     }).addTo(map);
+    
+    // Add WFS boundary overlay for polygon outlines
+    let boundaryLayer;
+    const addBoundaryLayer = async () => {
+      // Only show boundaries at zoom level 10 or higher
+      if (map.getZoom() < 10 || !document.getElementById('boundaryToggle').checked) {
+        if (boundaryLayer) {
+          map.removeLayer(boundaryLayer);
+          boundaryLayer = null;
+        }
+        return;
+      }
+      
+      try {
+        const bounds = map.getBounds();
+        const response = await fetch(`/water-wfs?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAME=Resource_Availability_at_Q95&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&BBOX=${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()},EPSG:4326`);
+        const data = await response.json();
+        
+        if (boundaryLayer) map.removeLayer(boundaryLayer);
+        
+        boundaryLayer = L.geoJSON(data, {
+          style: {
+            color: '#333333',
+            weight: 1,
+            opacity: 0.8,
+            fillOpacity: 0 // transparent fill, outline only
+          }
+        }).addTo(map);
+      } catch (error) {
+        console.error('Failed to load boundary layer:', error);
+      }
+    };
+    
+    // Update boundaries when map moves
+    map.on('moveend zoomend', addBoundaryLayer);
     
     // Add click handler for GetFeatureInfo
     map.on('click', async (e) => {
@@ -310,6 +350,10 @@
       } else {
         if (waterbodyLayer) map.removeLayer(waterbodyLayer);
       }
+    });
+    
+    document.getElementById('boundaryToggle').addEventListener('change', (e) => {
+      addBoundaryLayer(); // Will check the toggle state inside the function
     });
   </script>
 </body>
