@@ -31,6 +31,10 @@
     <label>
       <input type="checkbox" id="monitoringToggle"> Water Monitoring Sites
     </label>
+    <br>
+    <label>
+      <input type="checkbox" id="waterbodyToggle" checked> Waterbody Features
+    </label>
     <div id="waterLegend" style="margin-top: 10px;">
       <div><strong>Water Availability:</strong></div>
       <div id="legendItems"></div>
@@ -91,7 +95,7 @@
             
             // Add all waterbody features to map as a single layer
             if (waterbodyFeatures.length > 0) {
-              const waterbodyLayer = L.geoJSON(waterbodyFeatures, {
+              waterbodyLayer = L.geoJSON(waterbodyFeatures, {
                 style: (feature) => {
                   const geometryType = feature.properties['geometry-type'];
                   const type = geometryType ? geometryType.split('/').pop() : '';
@@ -119,7 +123,11 @@
                     };
                   }
                 }
-              }).addTo(map);
+              });
+              
+              if (document.getElementById('waterbodyToggle').checked) {
+                waterbodyLayer.addTo(map);
+              }
               
               console.log(`Added ${waterbodyFeatures.length} waterbody features to map`);
               popupContent += `<b>Waterbody Features:</b> ${waterbodyFeatures.length}<br>`;
@@ -148,6 +156,7 @@
     
     // Add monitoring sites layer using GeoJSON
     let monitoringSitesLayer;
+    let waterbodyLayer;
     fetch('/monitoring-sites')
       .then(response => response.json())
       .then(data => {
@@ -289,9 +298,17 @@
     
     document.getElementById('monitoringToggle').addEventListener('change', (e) => {
       if (e.target.checked) {
-        map.addLayer(monitoringSitesLayer);
+        if (monitoringSitesLayer) map.addLayer(monitoringSitesLayer);
       } else {
-        map.removeLayer(monitoringSitesLayer);
+        if (monitoringSitesLayer) map.removeLayer(monitoringSitesLayer);
+      }
+    });
+    
+    document.getElementById('waterbodyToggle').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        if (waterbodyLayer) map.addLayer(waterbodyLayer);
+      } else {
+        if (waterbodyLayer) map.removeLayer(waterbodyLayer);
       }
     });
   </script>
