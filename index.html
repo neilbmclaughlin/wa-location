@@ -92,11 +92,32 @@
             // Add all waterbody features to map as a single layer
             if (waterbodyFeatures.length > 0) {
               const waterbodyLayer = L.geoJSON(waterbodyFeatures, {
-                style: {
-                  color: '#0066cc',
-                  weight: 2,
-                  opacity: 0.8,
-                  fillOpacity: 0.3
+                style: (feature) => {
+                  const geometryType = feature.properties['geometry-type'];
+                  const type = geometryType ? geometryType.split('/').pop() : '';
+                  
+                  if (type === 'Catchment') {
+                    return {
+                      color: '#000000',
+                      weight: 2,
+                      opacity: 0.8,
+                      fillOpacity: 0.1
+                    };
+                  } else if (type === 'RiverLine') {
+                    return {
+                      color: '#0066cc',
+                      weight: 3,
+                      opacity: 0.8,
+                      fillOpacity: 0
+                    };
+                  } else {
+                    return {
+                      color: '#0066cc',
+                      weight: 2,
+                      opacity: 0.8,
+                      fillOpacity: 0.3
+                    };
+                  }
                 }
               }).addTo(map);
               
@@ -214,8 +235,14 @@
               const waterbodyResponse = await fetch(`/waterbody/${feature.properties.ea_wb_id}`);
               const waterbodyData = await waterbodyResponse.json();
               
+              // Extract waterbody feature names with geometry types
               const featureNames = waterbodyData.features
-                .map(f => f.properties.name || f.properties.NAME)
+                .map(f => {
+                  const name = f.properties.name || f.properties.NAME;
+                  const geometryType = f.properties['geometry-type'];
+                  const type = geometryType ? geometryType.split('/').pop() : '';
+                  return name ? `${name} (${type})` : null;
+                })
                 .filter(name => name);
               
               if (featureNames.length > 0) {
