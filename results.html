@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Water Availability Results</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      max-width: 800px; 
+      margin: 50px auto; 
+      padding: 20px; 
+      line-height: 1.6;
+    }
+    .header { margin-bottom: 30px; }
+    .postcode { color: #007cba; font-weight: bold; }
+    .feature-list { margin: 20px 0; }
+    .feature-item { 
+      padding: 10px; 
+      margin: 5px 0; 
+      background: #f5f5f5; 
+      border-left: 4px solid #007cba;
+    }
+    .feature-name { font-weight: bold; }
+    .feature-type { color: #666; }
+    .feature-distance { color: #007cba; float: right; }
+    .actions { margin-top: 30px; }
+    .btn { 
+      display: inline-block;
+      padding: 10px 20px; 
+      background: #007cba; 
+      color: white; 
+      text-decoration: none; 
+      border-radius: 4px;
+      margin-right: 10px;
+    }
+    .btn:hover { background: #005a8b; }
+    .loading { text-align: center; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Catchment Areas</h1>
+    <p>Showing catchments within 1km of postcode <span class="postcode" id="postcodeDisplay"></span></p>
+  </div>
+
+  <div id="loading" class="loading">Loading catchment areas...</div>
+  <div id="results" style="display: none;">
+    <div class="feature-list" id="featureList"></div>
+    
+    <div class="actions">
+      <a href="#" id="mapLink" class="btn">View Full Map</a>
+      <a href="/" class="btn" style="background: #666;">New Search</a>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const lat = urlParams.get('lat');
+    const lng = urlParams.get('lng');
+    const postcode = urlParams.get('postcode');
+    
+    document.getElementById('postcodeDisplay').textContent = postcode || 'Unknown';
+    document.getElementById('mapLink').href = `/location?lat=${lat}&lng=${lng}&postcode=${postcode}`;
+    
+    async function loadWaterbodyFeatures() {
+      try {
+        // Get polygons within 1km
+        const response = await fetch(`/water-features-radius?lat=${lat}&lng=${lng}&radius=1000`);
+        const data = await response.json();
+        
+        if (!data.features || data.features.length === 0) {
+          document.getElementById('loading').textContent = 'No water availability polygons found within 1km.';
+          return;
+        }
+        
+        // Get waterbody IDs
+        const waterbodyIds = [...new Set(
+          data.features
+            .map(feature => feature.properties.ea_wb_id)
+            .filter(id => id)
+        )];
+        
+        // Fetch all waterbody features
+        const allFeatures = [];
+        for (const id of waterbodyIds) {
+          try {
+            const waterbodyResponse = await fetch(`/waterbody/${id}`);
+            const waterbodyData = await waterbodyResponse.json();
+            allFeatures.push(...waterbodyData.features);
+          } catch (error) {
+            console.error(`Failed to load waterbody ${id}:`, error);
+          }
+        }
+        
+        // Calculate distances and sort - filter for catchments only
+        const postcodePoint = turf.point([parseFloat(lng), parseFloat(lat)]);
+        const featuresWithDistance = allFeatures
+          .filter(f => {
+            const geometryType = f.properties['geometry-type'];
+            const type = geometryType ? geometryType.split('/').pop() : '';
+            return type === 'Catchment';
+          })
+          .map(f => {
+            const name = f.properties.name || f.properties.NAME;
+            
+            if (!name || !f.geometry) return null;
+            
+            // Calculate distance to catchment boundary
+            const distance = turf.pointToLineDistance(postcodePoint, turf.polygonToLine(f.geometry), {units: 'meters'});
+            
+            return { name, distance };
+          })
+          .filter(f => f)
+          .sort((a, b) => a.distance - b.distance);
+        
+        // Display results
+        const featureList = document.getElementById('featureList');
+        if (featuresWithDistance.length === 0) {
+          featureList.innerHTML = '<p>No catchment areas found.</p>';
+        } else {
+          featureList.innerHTML = featuresWithDistance
+            .map(f => {
+              const distanceText = f.distance < 1000 ? 
+                `${Math.round(f.distance)}m` : 
+                `${(f.distance/1000).toFixed(1)}km`;
+              
+              return `
+                <div class="feature-item">
+                  <span class="feature-name">${f.name}</span>
+                  <span class="feature-distance">${distanceText}</span>
+                </div>
+              `;
+            })
+            .join('');
+        }
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('results').style.display = 'block';
+        
+      } catch (error) {
+        console.error('Error loading catchment areas:', error);
+        document.getElementById('loading').textContent = 'Error loading catchment areas.';
+      }
+    }
+    
+    if (lat && lng) {
+      loadWaterbodyFeatures();
+    } else {
+      document.getElementById('loading').textContent = 'Invalid location parameters.';
+    }
+  </script>
+</body>
+</html>

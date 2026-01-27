@@ -19,6 +19,12 @@ server.route({
 
 server.route({
   method: 'GET',
+  path: '/results',
+  handler: (request, h) => h.file('results.html')
+})
+
+server.route({
+  method: 'GET',
   path: '/location',
   handler: (request, h) => h.file('index.html')
 })
