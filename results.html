@@ -40,7 +40,7 @@
 <body>
   <div class="header">
     <h1>Catchment Areas</h1>
-    <p>Showing catchments within 1km of postcode <span class="postcode" id="postcodeDisplay"></span></p>
+    <p>Showing waterbody catchments within a 1km bounding box of postcode <span class="postcode" id="postcodeDisplay"></span></p>
   </div>
 
   <div id="loading" class="loading">Loading catchment areas...</div>
@@ -164,10 +164,10 @@
               // Create thumbnail map
               const thumbnailId = `thumbnail-${index}`;
               
-              // Get other features for this waterbody ID (siblings, not children)
-              const relatedFeatures = waterbodiesByWaterbodyId[f.waterbodyId] || [];
-              const relatedList = relatedFeatures.length > 0 ? 
-                relatedFeatures.map(wb => `<div style="margin-left: 20px; color: #666; font-size: 0.85em;">• ${wb.name} (${wb.type})</div>`).join('') : 
+              // Get related feature for this waterbody ID (there will only be one)
+              const relatedFeature = waterbodiesByWaterbodyId[f.waterbodyId]?.[0];
+              const relatedDisplay = relatedFeature ? 
+                `<div style="margin-left: 20px; color: #666; font-size: 0.85em;">• ${relatedFeature.name} (${relatedFeature.type})</div>` : 
                 '<div style="margin-left: 20px; color: #999; font-size: 0.85em; font-style: italic;">No related features found</div>';
               
               return `
@@ -182,8 +182,9 @@
                     </div>
                     <a href="${mapUrl}" style="color: #007cba; text-decoration: none; font-size: 0.9em;">View on Map →</a>
                     <div style="margin-top: 8px;">
-                      <div style="font-size: 0.9em; color: #555; margin-bottom: 3px;">Related features:</div>
-                      ${relatedList}
+                      <div style="font-size: 0.9em; color: #555; margin-bottom:
+                      3px;">Waterbody:</div>
+                      ${relatedDisplay}
                     </div>
                   </div>
                 </div>

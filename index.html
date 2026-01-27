@@ -71,6 +71,9 @@
     
     const map = L.map('map').setView([lat || 54.5, lng || -2.5], catchment ? 15 : (lat ? 12 : 6));
     
+    // Add scale control
+    L.control.scale().addTo(map);
+    
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
