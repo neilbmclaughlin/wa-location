@@ -60,7 +60,7 @@ A web application that displays water availability data and related hydrological
 ## Usage
 
 1. Start the server: `npm start`
-2. Navigate to `http://localhost:3000/postcode`
+2. Navigate to `http://localhost:3000`
 3. Enter a UK postcode
 4. View the map with water availability data
 5. Toggle layers on/off using the control panel
