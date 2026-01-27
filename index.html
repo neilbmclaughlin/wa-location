@@ -284,13 +284,40 @@
               const waterbodyResponse = await fetch(`/waterbody/${feature.properties.ea_wb_id}`);
               const waterbodyData = await waterbodyResponse.json();
               
-              // Extract waterbody feature names with geometry types
+              // Extract waterbody feature names with geometry types and distances
+              const postcodePoint = turf.point([parseFloat(lng), parseFloat(lat)]);
               const featureNames = waterbodyData.features
                 .map(f => {
                   const name = f.properties.name || f.properties.NAME;
                   const geometryType = f.properties['geometry-type'];
                   const type = geometryType ? geometryType.split('/').pop() : '';
-                  return name ? `${name} (${type})` : null;
+                  
+                  if (name && f.geometry) {
+                    // Calculate distance from postcode to feature
+                    let distance;
+                    if (f.geometry.type === 'Point') {
+                      // direct distance calc
+                      distance = turf.distance(postcodePoint, f.geometry, {units: 'meters'});
+                    } else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') {
+                      // For lines, find nearest point on the line
+                      const nearestPoint = turf.nearestPointOnLine(f.geometry, postcodePoint);
+                      distance = turf.distance(postcodePoint, nearestPoint, {units: 'meters'});
+                    } else if (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') {
+                      // For polygons, calculate distance to nearest polygon boundary
+                      distance = turf.pointToLineDistance(postcodePoint, turf.polygonToLine(f.geometry), {units: 'meters'});
+                    } else {
+                      // Fallback: distance to centroid
+                      const centroid = turf.centroid(f.geometry);
+                      distance = turf.distance(postcodePoint, centroid, {units: 'meters'});
+                    }
+                    
+                    const distanceText = distance < 1000 ? 
+                      `${Math.round(distance)}m` : 
+                      `${(distance/1000).toFixed(1)}km`;
+                    
+                    return `${name} (${type}) - ${distanceText}`;
+                  }
+                  return null;
                 })
                 .filter(name => name);
               
