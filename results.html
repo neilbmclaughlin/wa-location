@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>Water Availability Results</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     body { 
       font-family: Arial, sans-serif; 
@@ -52,6 +53,7 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script>
     const urlParams = new URLSearchParams(window.location.search);
@@ -126,7 +128,11 @@
             // Get water availability status
             const availability = waterAvailabilityData[waterbodyId] || 'unknown';
             
-            return { name, distance, availability, waterbodyId };
+            // Calculate bounds for thumbnail
+            const bounds = turf.bbox(f.geometry);
+            const center = turf.centroid(f.geometry).geometry.coordinates;
+            
+            return { name, distance, availability, waterbodyId, bounds, center, geometry: f.geometry };
           })
           .filter(f => f)
           .sort((a, b) => a.distance - b.distance);
@@ -144,7 +150,7 @@
           };
           
           featureList.innerHTML = featuresWithDistance
-            .map(f => {
+            .map((f, index) => {
               const distanceText = f.distance < 1000 ? 
                 `${Math.round(f.distance)}m` : 
                 `${(f.distance/1000).toFixed(1)}km`;
@@ -152,19 +158,50 @@
               const mapUrl = `/location?lat=${lat}&lng=${lng}&postcode=${postcode}&catchment=${encodeURIComponent(f.name)}&layers=waterbody`;
               const status = statusMap[f.availability.toLowerCase()] || statusMap['grey'];
               
+              // Create thumbnail map
+              const thumbnailId = `thumbnail-${index}`;
+              
               return `
-                <div class="feature-item">
-                  <span class="feature-name">${f.name}</span>
-                  <span class="feature-distance">${distanceText}</span>
-                  <br>
-                  <div style="margin-top: 5px;">
-                    <span style="display: inline-block; background: ${status.color}; color: ${status.textColor}; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; font-weight: bold;">${status.text}</span>
+                <div class="feature-item" style="display: flex; align-items: center; gap: 15px;">
+                  <div id="${thumbnailId}" style="width: 120px; height: 80px; border: 1px solid #ccc; flex-shrink: 0;"></div>
+                  <div style="flex-grow: 1;">
+                    <span class="feature-name">${f.name}</span>
+                    <span class="feature-distance">${distanceText}</span>
+                    <br>
+                    <div style="margin-top: 5px;">
+                      <span style="display: inline-block; background: ${status.color}; color: ${status.textColor}; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; font-weight: bold;">${status.text}</span>
+                    </div>
+                    <a href="${mapUrl}" style="color: #007cba; text-decoration: none; font-size: 0.9em;">View on Map →</a>
                   </div>
-                  <a href="${mapUrl}" style="color: #007cba; text-decoration: none; font-size: 0.9em;">View on Map →</a>
                 </div>
               `;
             })
             .join('');
+            
+          // Create thumbnail maps after DOM is updated
+          setTimeout(() => {
+            featuresWithDistance.forEach((f, index) => {
+              const thumbnailId = `thumbnail-${index}`;
+              const thumbnailMap = L.map(thumbnailId, {
+                zoomControl: false,
+                attributionControl: false,
+                dragging: false,
+                touchZoom: false,
+                doubleClickZoom: false,
+                scrollWheelZoom: false,
+                boxZoom: false,
+                keyboard: false
+              });
+              
+              L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(thumbnailMap);
+              
+              const geoJsonLayer = L.geoJSON(f.geometry, {
+                style: { color: '#007cba', weight: 2, fillOpacity: 0.3 }
+              }).addTo(thumbnailMap);
+              
+              thumbnailMap.fitBounds(geoJsonLayer.getBounds(), { padding: [5, 5] });
+            });
+          }, 100);
         }
         
         document.getElementById('loading').style.display = 'none';
