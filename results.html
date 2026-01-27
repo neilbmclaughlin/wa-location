@@ -80,12 +80,26 @@
             .filter(id => id)
         )];
         
-        // Fetch all waterbody features
+        // Fetch all waterbody features and water availability data
         const allFeatures = [];
+        const waterAvailabilityData = {};
+        
+        // First, store water availability data by waterbody ID
+        data.features.forEach(feature => {
+          const id = feature.properties.ea_wb_id;
+          if (id) {
+            waterAvailabilityData[id] = feature.properties.camscdsq95;
+          }
+        });
+        
         for (const id of waterbodyIds) {
           try {
             const waterbodyResponse = await fetch(`/waterbody/${id}`);
             const waterbodyData = await waterbodyResponse.json();
+            // Add the waterbody ID to each feature for matching
+            waterbodyData.features.forEach(feature => {
+              feature.properties.ea_wb_id = id;
+            });
             allFeatures.push(...waterbodyData.features);
           } catch (error) {
             console.error(`Failed to load waterbody ${id}:`, error);
@@ -102,13 +116,17 @@
           })
           .map(f => {
             const name = f.properties.name || f.properties.NAME;
+            const waterbodyId = f.properties.ea_wb_id;
             
             if (!name || !f.geometry) return null;
             
             // Calculate distance to catchment boundary
             const distance = turf.pointToLineDistance(postcodePoint, turf.polygonToLine(f.geometry), {units: 'meters'});
             
-            return { name, distance };
+            // Get water availability status
+            const availability = waterAvailabilityData[waterbodyId] || 'unknown';
+            
+            return { name, distance, availability, waterbodyId };
           })
           .filter(f => f)
           .sort((a, b) => a.distance - b.distance);
@@ -118,6 +136,13 @@
         if (featuresWithDistance.length === 0) {
           featureList.innerHTML = '<p>No catchment areas found.</p>';
         } else {
+          const statusMap = {
+            'green': { text: 'Available', color: '#00aa00', textColor: 'white' },
+            'yellow': { text: 'Restricted', color: '#ff8800', textColor: 'white' },
+            'red': { text: 'Unavailable', color: '#cc0000', textColor: 'white' },
+            'grey': { text: 'Unknown', color: '#808080', textColor: 'white' }
+          };
+          
           featureList.innerHTML = featuresWithDistance
             .map(f => {
               const distanceText = f.distance < 1000 ? 
@@ -125,12 +150,16 @@
                 `${(f.distance/1000).toFixed(1)}km`;
               
               const mapUrl = `/location?lat=${lat}&lng=${lng}&postcode=${postcode}&catchment=${encodeURIComponent(f.name)}&layers=waterbody`;
+              const status = statusMap[f.availability.toLowerCase()] || statusMap['grey'];
               
               return `
                 <div class="feature-item">
                   <span class="feature-name">${f.name}</span>
                   <span class="feature-distance">${distanceText}</span>
                   <br>
+                  <div style="margin-top: 5px;">
+                    <span style="display: inline-block; background: ${status.color}; color: ${status.textColor}; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; font-weight: bold;">${status.text}</span>
+                  </div>
                   <a href="${mapUrl}" style="color: #007cba; text-decoration: none; font-size: 0.9em;">View on Map →</a>
                 </div>
               `;
