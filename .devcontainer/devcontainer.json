@@ -1,6 +1,11 @@
 {
   "name": "Water Availability App",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:18",
+  "features": {
+    "ghcr.io/devcontainers/features/sshd:1": {
+      "version": "latest"
+    }
+  },
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": {
