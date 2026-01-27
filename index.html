@@ -208,7 +208,7 @@
       queryMetadata();
     }
     
-    const wmsLayer = L.tileLayer.wms('http://localhost:3000/wms', {
+    const wmsLayer = L.tileLayer.wms('/wms', {
       layers: 'Hydrogeology',
       format: 'image/png',
       transparent: true,
@@ -272,7 +272,7 @@
     });
     
     // Load water availability as WMS layer
-    const waterLayer = L.tileLayer.wms('http://localhost:3000/water-wms', {
+    const waterLayer = L.tileLayer.wms('/water-wms', {
       layers: 'Resource_Availability_at_Q95',
       styles: 'ResourceAvailability_at_Q95_04_25',
       format: 'image/png',
