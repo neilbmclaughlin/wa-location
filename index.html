@@ -32,28 +32,30 @@
 <body>
   <div class="layer-control">
     <a href="/" class="back-btn">← Back to Search</a>
-    <label>
-      <input type="checkbox" id="bgsToggle"> BGS Hydrogeology
-    </label>
-    <br>
-    <label>
-      <input type="checkbox" id="waterToggle" checked> Water Availability at Q95
-    </label>
-    <br>
-    <label style="margin-left: 20px;">
-      <input type="checkbox" id="boundaryToggle"> Show Boundaries
-    </label>
-    <br>
-    <label>
-      <input type="checkbox" id="monitoringToggle"> Water Monitoring Sites
-    </label>
-    <br>
-    <label>
-      <input type="checkbox" id="waterbodyToggle" checked> Waterbody Features
-    </label>
-    <div id="waterLegend" style="margin-top: 10px;">
-      <div><strong>Water Availability:</strong></div>
-      <div id="legendItems"></div>
+    <div style="margin-top: 10px;">
+      <label>
+        <input type="checkbox" id="bgsToggle"> BGS Hydrogeology
+      </label>
+      <br>
+      <label>
+        <input type="checkbox" id="waterToggle" checked> Water Availability at Q95
+      </label>
+      <br>
+      <label style="margin-left: 20px;">
+        <input type="checkbox" id="boundaryToggle"> Show Boundaries
+      </label>
+      <br>
+      <label>
+        <input type="checkbox" id="monitoringToggle"> Water Monitoring Sites
+      </label>
+      <br>
+      <label>
+        <input type="checkbox" id="waterbodyToggle" checked> Waterbody Features
+      </label>
+      <div id="waterLegend" style="margin-top: 10px;">
+        <div><strong>Water Availability:</strong></div>
+        <div id="legendItems"></div>
+      </div>
     </div>
   </div>
   <div id="map"></div>
@@ -109,7 +111,7 @@
             )];
             
             // Fetch waterbody features for all IDs
-            const waterbodyFeatures = [];
+            waterbodyFeatures = []; // Reset global array
             for (const id of waterbodyIds) {
               try {
                 const waterbodyResponse = await fetch(`/waterbody/${id}`);
@@ -160,7 +162,7 @@
                   
                   if (type === 'Catchment' && featureName) {
                     const center = layer.getBounds().getCenter();
-                    L.marker(center, {
+                    const labelMarker = L.marker(center, {
                       icon: L.divIcon({
                         className: 'catchment-label',
                         html: `<div style="background: rgba(255,255,255,0.8); padding: 2px 4px; border-radius: 3px; font-size: 12px; font-weight: bold; border: 1px solid #333;">${featureName}</div>`,
@@ -168,6 +170,7 @@
                         iconAnchor: [50, 10]
                       })
                     }).addTo(map);
+                    catchmentLabels.push(labelMarker); // Track the label marker
                   }
                 }
               });
@@ -219,6 +222,8 @@
     // Add monitoring sites layer using GeoJSON
     let monitoringSitesLayer;
     let waterbodyLayer;
+    let catchmentLabels = []; // Track catchment label markers
+    let waterbodyFeatures = []; // Store waterbody features globally
     fetch('/monitoring-sites')
       .then(response => response.json())
       .then(data => {
@@ -437,8 +442,32 @@
     document.getElementById('waterbodyToggle').addEventListener('change', (e) => {
       if (e.target.checked) {
         if (waterbodyLayer) map.addLayer(waterbodyLayer);
+        // Recreate catchment labels
+        if (waterbodyFeatures) {
+          waterbodyFeatures.forEach(f => {
+            const geometryType = f.properties['geometry-type'];
+            const type = geometryType ? geometryType.split('/').pop() : '';
+            const featureName = f.properties.name || f.properties.NAME;
+            
+            if (type === 'Catchment' && featureName && f.geometry) {
+              const center = turf.centroid(f.geometry).geometry.coordinates;
+              const labelMarker = L.marker([center[1], center[0]], {
+                icon: L.divIcon({
+                  className: 'catchment-label',
+                  html: `<div style="background: rgba(255,255,255,0.8); padding: 2px 4px; border-radius: 3px; font-size: 12px; font-weight: bold; border: 1px solid #333;">${featureName}</div>`,
+                  iconSize: [100, 20],
+                  iconAnchor: [50, 10]
+                })
+              }).addTo(map);
+              catchmentLabels.push(labelMarker);
+            }
+          });
+        }
       } else {
         if (waterbodyLayer) map.removeLayer(waterbodyLayer);
+        // Remove catchment labels
+        catchmentLabels.forEach(label => map.removeLayer(label));
+        catchmentLabels = [];
       }
     });
     
