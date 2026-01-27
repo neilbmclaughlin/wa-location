@@ -52,12 +52,23 @@
     const lat = urlParams.get('lat')
     const lng = urlParams.get('lng')
     const postcode = urlParams.get('postcode')
+    const catchment = urlParams.get('catchment')
+    const layers = urlParams.get('layers')
     
-    const map = L.map('map').setView([lat || 54.5, lng || -2.5], lat ? 12 : 6);
+    const map = L.map('map').setView([lat || 54.5, lng || -2.5], catchment ? 15 : (lat ? 12 : 6));
     
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
+    
+    // Set initial layer states based on URL parameters
+    if (layers === 'waterbody') {
+      document.getElementById('waterToggle').checked = false;
+      document.getElementById('waterbodyToggle').checked = true;
+      document.getElementById('monitoringToggle').checked = false;
+      document.getElementById('bgsToggle').checked = false;
+      document.getElementById('boundaryToggle').checked = false;
+    }
     
     // Add pin if coordinates are provided
     if (lat && lng) {
@@ -103,13 +114,16 @@
                 style: (feature) => {
                   const geometryType = feature.properties['geometry-type'];
                   const type = geometryType ? geometryType.split('/').pop() : '';
+                  const featureName = feature.properties.name || feature.properties.NAME;
+                  const isSelected = catchment && featureName === catchment;
                   
                   if (type === 'Catchment') {
                     return {
-                      color: '#000000',
-                      weight: 2,
+                      color: isSelected ? '#ff6600' : '#000000',
+                      weight: isSelected ? 4 : 2,
                       opacity: 0.8,
-                      fillOpacity: 0.1
+                      fillColor: isSelected ? '#ff6600' : 'transparent',
+                      fillOpacity: isSelected ? 0.2 : 0.1
                     };
                   } else if (type === 'RiverLine') {
                     return {
@@ -126,11 +140,43 @@
                       fillOpacity: 0.3
                     };
                   }
+                },
+                onEachFeature: (feature, layer) => {
+                  const geometryType = feature.properties['geometry-type'];
+                  const type = geometryType ? geometryType.split('/').pop() : '';
+                  const featureName = feature.properties.name || feature.properties.NAME;
+                  
+                  if (type === 'Catchment' && featureName) {
+                    const center = layer.getBounds().getCenter();
+                    L.marker(center, {
+                      icon: L.divIcon({
+                        className: 'catchment-label',
+                        html: `<div style="background: rgba(255,255,255,0.8); padding: 2px 4px; border-radius: 3px; font-size: 12px; font-weight: bold; border: 1px solid #333;">${featureName}</div>`,
+                        iconSize: [100, 20],
+                        iconAnchor: [50, 10]
+                      })
+                    }).addTo(map);
+                  }
                 }
               });
               
               if (document.getElementById('waterbodyToggle').checked) {
                 waterbodyLayer.addTo(map);
+              }
+              
+              // If a specific catchment is selected, zoom to its bounds
+              if (catchment) {
+                const selectedFeature = waterbodyFeatures.find(f => {
+                  const featureName = f.properties.name || f.properties.NAME;
+                  const geometryType = f.properties['geometry-type'];
+                  const type = geometryType ? geometryType.split('/').pop() : '';
+                  return featureName === catchment && type === 'Catchment';
+                });
+                
+                if (selectedFeature) {
+                  const featureLayer = L.geoJSON(selectedFeature);
+                  map.fitBounds(featureLayer.getBounds(), { padding: [20, 20] });
+                }
               }
               
               console.log(`Added ${waterbodyFeatures.length} waterbody features to map`);
@@ -221,7 +267,12 @@
       transparent: true,
       attribution: '© Environment Agency',
       opacity: 0.7
-    }).addTo(map);
+    });
+    
+    // Add water layer based on URL parameters
+    if (layers !== 'waterbody') {
+      waterLayer.addTo(map);
+    }
     
     // Add WFS boundary overlay for polygon outlines
     let boundaryLayer;
