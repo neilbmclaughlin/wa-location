@@ -108,34 +108,37 @@
           }
         }
         
-        // Calculate distances and sort - filter for catchments only
+        // Calculate distances and sort - separate catchments and other waterbodies
         const postcodePoint = turf.point([parseFloat(lng), parseFloat(lat)]);
-        const featuresWithDistance = allFeatures
-          .filter(f => {
-            const geometryType = f.properties['geometry-type'];
-            const type = geometryType ? geometryType.split('/').pop() : '';
-            return type === 'Catchment';
-          })
-          .map(f => {
-            const name = f.properties.name || f.properties.NAME;
-            const waterbodyId = f.properties.ea_wb_id;
-            
-            if (!name || !f.geometry) return null;
-            
+        const catchments = [];
+        const waterbodiesByWaterbodyId = {};
+        
+        allFeatures.forEach(f => {
+          const geometryType = f.properties['geometry-type'];
+          const type = geometryType ? geometryType.split('/').pop() : '';
+          const name = f.properties.name || f.properties.NAME;
+          const waterbodyId = f.properties.ea_wb_id;
+          
+          if (!name || !f.geometry) return;
+          
+          if (type === 'Catchment') {
             // Calculate distance to catchment boundary
             const distance = turf.pointToLineDistance(postcodePoint, turf.polygonToLine(f.geometry), {units: 'meters'});
-            
-            // Get water availability status
             const availability = waterAvailabilityData[waterbodyId] || 'unknown';
-            
-            // Calculate bounds for thumbnail
             const bounds = turf.bbox(f.geometry);
             const center = turf.centroid(f.geometry).geometry.coordinates;
             
-            return { name, distance, availability, waterbodyId, bounds, center, geometry: f.geometry };
-          })
-          .filter(f => f)
-          .sort((a, b) => a.distance - b.distance);
+            catchments.push({ name, distance, availability, waterbodyId, bounds, center, geometry: f.geometry });
+          } else {
+            // Group other waterbodies by waterbody ID
+            if (!waterbodiesByWaterbodyId[waterbodyId]) {
+              waterbodiesByWaterbodyId[waterbodyId] = [];
+            }
+            waterbodiesByWaterbodyId[waterbodyId].push({ name, type });
+          }
+        });
+        
+        const featuresWithDistance = catchments.sort((a, b) => a.distance - b.distance);
         
         // Display results
         const featureList = document.getElementById('featureList');
@@ -161,17 +164,27 @@
               // Create thumbnail map
               const thumbnailId = `thumbnail-${index}`;
               
+              // Get other features for this waterbody ID (siblings, not children)
+              const relatedFeatures = waterbodiesByWaterbodyId[f.waterbodyId] || [];
+              const relatedList = relatedFeatures.length > 0 ? 
+                relatedFeatures.map(wb => `<div style="margin-left: 20px; color: #666; font-size: 0.85em;">• ${wb.name} (${wb.type})</div>`).join('') : 
+                '<div style="margin-left: 20px; color: #999; font-size: 0.85em; font-style: italic;">No related features found</div>';
+              
               return `
-                <div class="feature-item" style="display: flex; align-items: center; gap: 15px;">
+                <div class="feature-item" style="display: flex; align-items: flex-start; gap: 15px; margin-bottom: 15px;">
                   <div id="${thumbnailId}" style="width: 120px; height: 80px; border: 1px solid #ccc; flex-shrink: 0;"></div>
                   <div style="flex-grow: 1;">
-                    <span class="feature-name">${f.name}</span>
+                    <span class="feature-name" style="font-size: 1.1em;">${f.name}</span>
                     <span class="feature-distance">${distanceText}</span>
                     <br>
-                    <div style="margin-top: 5px;">
+                    <div style="margin: 5px 0;">
                       <span style="display: inline-block; background: ${status.color}; color: ${status.textColor}; padding: 2px 6px; border-radius: 3px; font-size: 0.85em; font-weight: bold;">${status.text}</span>
                     </div>
                     <a href="${mapUrl}" style="color: #007cba; text-decoration: none; font-size: 0.9em;">View on Map →</a>
+                    <div style="margin-top: 8px;">
+                      <div style="font-size: 0.9em; color: #555; margin-bottom: 3px;">Related features:</div>
+                      ${relatedList}
+                    </div>
                   </div>
                 </div>
               `;
