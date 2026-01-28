@@ -90,7 +90,7 @@ server.route({
 
 server.route({
   method: 'GET',
-  path: '/water-availability',
+  path: '/water-availability-info',
   handler: async (request, h) => {
     const { bbox, width, height, x, y } = request.query
 

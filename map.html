@@ -336,7 +336,7 @@
       const point = map.latLngToContainerPoint(e.latlng);
       
       try {
-        const url = `/water-availability?bbox=${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}&width=${size.x}&height=${size.y}&x=${Math.round(point.x)}&y=${Math.round(point.y)}`;
+        const url = `/water-availability-info?bbox=${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}&width=${size.x}&height=${size.y}&x=${Math.round(point.x)}&y=${Math.round(point.y)}`;
         
         const response = await fetch(url);
         const data = await response.json();
