@@ -214,7 +214,7 @@
       queryMetadata();
     }
     
-    const wmsLayer = L.tileLayer.wms('/wms', {
+    const wmsLayer = L.tileLayer.wms('/hydrology-wms', {
       layers: 'Hydrogeology',
       format: 'image/png',
       transparent: true,
@@ -280,7 +280,7 @@
     });
     
     // Load water availability as WMS layer
-    const waterLayer = L.tileLayer.wms('/water-wms', {
+    const waterLayer = L.tileLayer.wms('/water-availability-wms', {
       layers: 'Resource_Availability_at_Q95',
       styles: 'ResourceAvailability_at_Q95_04_25',
       format: 'image/png',
@@ -308,7 +308,7 @@
       
       try {
         const bounds = map.getBounds();
-        const response = await fetch(`/water-wfs?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAME=Resource_Availability_at_Q95&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&BBOX=${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()},EPSG:4326`);
+        const response = await fetch(`/water-availability-wfs?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAME=Resource_Availability_at_Q95&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&BBOX=${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()},EPSG:4326`);
         const data = await response.json();
         
         if (boundaryLayer) map.removeLayer(boundaryLayer);

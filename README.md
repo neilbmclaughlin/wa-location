@@ -74,6 +74,6 @@ A web application that displays water availability data and related hydrological
 - `GET /water-features-radius` - WFS spatial query for polygons within radius
 - `GET /monitoring-sites` - Monitoring sites GeoJSON data
 - `GET /waterbody/{id}` - Waterbody features for specific ID
-- `GET /wms` - Proxy for BGS geological WMS service
-- `GET /water-wms` - Proxy for EA water availability WMS service
-- `GET /water-wfs` - Proxy for EA water availability WFS service
+- `GET /hydrology-wms` - Proxy for BGS geological WMS service
+- `GET /water-availability-wms` - Proxy for EA water availability WMS service
+- `GET /water-availability-wfs` - Proxy for EA water availability WFS service

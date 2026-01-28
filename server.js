@@ -25,13 +25,13 @@ server.route({
 
 server.route({
   method: 'GET',
-  path: '/location',
-  handler: (request, h) => h.file('index.html')
+  path: '/map',
+  handler: (request, h) => h.file('map.html')
 })
 
 server.route({
   method: 'GET',
-  path: '/wms',
+  path: '/hydrology-wms',
   handler: {
     proxy: {
       uri: 'https://map.bgs.ac.uk/arcgis/services/GeoIndex_Onshore/hydrogeology/MapServer/WmsServer{query}',
@@ -68,7 +68,7 @@ server.route({
 
 server.route({
   method: 'GET',
-  path: '/water-wms',
+  path: '/water-availability-wms',
   handler: {
     proxy: {
       uri: 'https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/wms{query}',
@@ -79,7 +79,7 @@ server.route({
 
 server.route({
   method: 'GET',
-  path: '/water-wfs',
+  path: '/water-availability-wfs',
   handler: {
     proxy: {
       uri: 'https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/wfs{query}',
