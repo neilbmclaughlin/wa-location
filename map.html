@@ -214,7 +214,7 @@
       queryMetadata();
     }
     
-    const wmsLayer = L.tileLayer.wms('/hydrology-wms', {
+    const hydrologyWmsLayer = L.tileLayer.wms('/hydrology-wms', {
       layers: 'Hydrogeology',
       format: 'image/png',
       transparent: true,
@@ -280,7 +280,7 @@
     });
     
     // Load water availability as WMS layer
-    const waterLayer = L.tileLayer.wms('/water-availability-wms', {
+    const waterAvailabilityWmsLayer = L.tileLayer.wms('/water-availability-wms', {
       layers: 'Resource_Availability_at_Q95',
       styles: 'ResourceAvailability_at_Q95_04_25',
       format: 'image/png',
@@ -291,7 +291,7 @@
     
     // Add water layer based on URL parameters
     if (layers !== 'waterbody') {
-      waterLayer.addTo(map);
+      waterAvailabilityWmsLayer.addTo(map);
     }
     
     // Add WFS boundary overlay for polygon outlines
@@ -413,23 +413,23 @@
       }
     });
     
-    wmsLayer.on('tileerror', (e) => console.error('WMS tile error:', e));
+    hydrologyWmsLayer.on('tileerror', (e) => console.error('WMS tile error:', e));
     
     document.getElementById('bgsToggle').addEventListener('change', (e) => {
       if (e.target.checked) {
-        map.addLayer(wmsLayer);
+        map.addLayer(hydrologyWmsLayer);
       } else {
-        map.removeLayer(wmsLayer);
+        map.removeLayer(hydrologyWmsLayer);
       }
     });
     
     document.getElementById('waterToggle').addEventListener('change', (e) => {
       const legend = document.getElementById('waterLegend');
       if (e.target.checked) {
-        map.addLayer(waterLayer);
+        map.addLayer(waterAvailabilityWmsLayer);
         legend.style.display = 'block';
       } else {
-        map.removeLayer(waterLayer);
+        map.removeLayer(waterAvailabilityWmsLayer);
         legend.style.display = 'none';
       }
     });

@@ -6,9 +6,9 @@ A web application that displays water availability data and related hydrological
 
 - **Postcode Search**: Enter a UK postcode to center the map and display relevant data
 - **Water Availability Layer**: Interactive WMS tiles showing water availability status with clickable polygons
-- **Geological Layer**: BGS Hydrogeology data (optional overlay)
 - **Monitoring Sites**: Water monitoring site locations as clickable markers
 - **Waterbody Features**: Displays catchment areas and river lines within 1km of the postcode
+- **Geological Layer**: BGS Hydrogeology data (optional overlay)
 - **Interactive Popups**: Click on polygons and markers to view detailed information
 
 ## Data Sources
@@ -19,6 +19,9 @@ A web application that displays water availability data and related hydrological
 - **Spatial Queries**: WFS for finding polygons within radius
 - **Service**: `https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/`
 - **Properties**: Includes `camscdsq95` (color classification) and `ea_wb_id` (waterbody identifier)
+- ** Notes: This data can be retrieved from:
+     arcgis (`https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/ArcGIS/rest/services/Water_Resources_SRoC_Water_Availabililty/FeatureServer`) or
+    data.gov.uk (`https://www.data.gov.uk/dataset/b1f5c467-ed41-4e8f-89d7-f79a76645fd6/water-resource-availability-and-abstraction-reliability-cycle-21`)
 
 ### Geological Data
 - **Source**: British Geological Survey (BGS)
@@ -70,7 +73,7 @@ A web application that displays water availability data and related hydrological
 
 - `GET /postcode` - Postcode input page
 - `POST /postcode` - Geocode postcode to coordinates
-- `GET /water-availability` - WMS GetFeatureInfo for polygon clicks
+- `GET /water-availability-info` - WMS GetFeatureInfo for polygon clicks
 - `GET /water-features-radius` - WFS spatial query for polygons within radius
 - `GET /monitoring-sites` - Monitoring sites GeoJSON data
 - `GET /waterbody/{id}` - Waterbody features for specific ID
