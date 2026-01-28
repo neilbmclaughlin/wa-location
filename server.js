@@ -129,34 +129,32 @@ server.route({
 
 server.route({
   method: 'GET',
-  path: '/water-features-radius',
-  handler: async (request, h) => {
-    const { lat, lng, radius = 1000 } = request.query
+  path: '/nearby-catchments',
+  handler: {
+    proxy: {
+      mapUri: (request) => {
+        const { lat, lng, radius = 1000 } = request.query
 
-    try {
-      // Calculate precise bbox for 1km radius (1 degree ≈ 111km at equator)
-      const radiusInDegrees = parseFloat(radius) / 111000 // Convert meters to degrees
-      const minLng = parseFloat(lng) - radiusInDegrees
-      const minLat = parseFloat(lat) - radiusInDegrees
-      const maxLng = parseFloat(lng) + radiusInDegrees
-      const maxLat = parseFloat(lat) + radiusInDegrees
+        // Calculate precise bbox for radius (1 degree ≈ 111km at equator)
+        const radiusInDegrees = parseFloat(radius) / 111000
+        const minLng = parseFloat(lng) - radiusInDegrees
+        const minLat = parseFloat(lat) - radiusInDegrees
+        const maxLng = parseFloat(lng) + radiusInDegrees
+        const maxLat = parseFloat(lat) + radiusInDegrees
 
-      const wfsUrl = `${EA_WFS_URL}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAME=Resource_Availability_at_Q95&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&BBOX=${minLng},${minLat},${maxLng},${maxLat},EPSG:4326`
+        const query = new URLSearchParams({
+          SERVICE: 'WFS',
+          VERSION: '2.0.0',
+          REQUEST: 'GetFeature',
+          TYPENAME: 'Resource_Availability_at_Q95',
+          OUTPUTFORMAT: 'application/json',
+          SRSNAME: 'EPSG:4326',
+          BBOX: `${minLng},${minLat},${maxLng},${maxLat},EPSG:4326`
+        })
 
-      const response = await fetch(wfsUrl)
-
-      if (!response.ok) {
-        console.error('WFS response not ok:', response.status, response.statusText)
-        const errorText = await response.text()
-        console.error('WFS error response:', errorText)
-        return h.response({ error: 'WFS service error', details: errorText }).code(500)
-      }
-
-      const data = await response.json()
-      return data
-    } catch (error) {
-      console.error('WFS query error:', error)
-      return h.response({ error: 'Failed to fetch features within radius', details: error.message }).code(500)
+        return { uri: `${EA_WFS_URL}?${query.toString()}` }
+      },
+      passThrough: true
     }
   }
 })

@@ -98,7 +98,7 @@
           console.log('Fetching polygons within 1km of:', lat, lng);
           
           // Get all polygons within 1km using WFS
-          const response = await fetch(`/water-features-radius?lat=${lat}&lng=${lng}&radius=1000`);
+          const response = await fetch(`/nearby-catchments?lat=${lat}&lng=${lng}&radius=1000`);
           const data = await response.json();
           
           let popupContent = `<b>Postcode:</b> ${postcode || 'Unknown'}<br>`;

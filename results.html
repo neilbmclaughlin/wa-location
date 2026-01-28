@@ -67,7 +67,7 @@
     async function loadWaterbodyFeatures() {
       try {
         // Get polygons within 1km
-        const response = await fetch(`/water-features-radius?lat=${lat}&lng=${lng}&radius=1000`);
+        const response = await fetch(`/nearby-catchments?lat=${lat}&lng=${lng}&radius=1000`);
         const data = await response.json();
         
         if (!data.features || data.features.length === 0) {
