@@ -213,6 +213,16 @@
                 style: { color: '#007cba', weight: 2, fillOpacity: 0.3 }
               }).addTo(thumbnailMap);
               
+              // Add postcode marker
+              L.marker([lat, lng], {
+                icon: L.divIcon({
+                  className: 'postcode-marker',
+                  html: '<div style="background: red; width: 8px; height: 8px; border-radius: 50%; border: 2px solid white;"></div>',
+                  iconSize: [12, 12],
+                  iconAnchor: [6, 6]
+                })
+              }).addTo(thumbnailMap);
+              
               thumbnailMap.fitBounds(geoJsonLayer.getBounds(), { padding: [5, 5] });
             });
           }, 100);
