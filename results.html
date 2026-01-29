@@ -122,8 +122,13 @@
           if (!name || !f.geometry) return;
           
           if (type === 'Catchment') {
-            // Calculate distance to catchment boundary
-            const distance = turf.pointToLineDistance(postcodePoint, turf.polygonToLine(f.geometry), {units: 'meters'});
+            // Calculate distance to catchment (0 if inside, distance to boundary if outside)
+            let distance;
+            if (turf.booleanPointInPolygon(postcodePoint, f.geometry)) {
+              distance = 0; // Point is inside the polygon
+            } else {
+              distance = turf.pointToLineDistance(postcodePoint, turf.polygonToLine(f.geometry), {units: 'meters'});
+            }
             const availability = waterAvailabilityData[waterbodyId] || 'unknown';
             const bounds = turf.bbox(f.geometry);
             const center = turf.centroid(f.geometry).geometry.coordinates;
