@@ -85,6 +85,7 @@
         // Fetch all waterbody features and water availability data
         const allFeatures = [];
         const waterAvailabilityData = {};
+        const operationalCatchmentData = {};
         
         // First, store water availability data by waterbody ID
         data.features.forEach(feature => {
@@ -93,6 +94,25 @@
             waterAvailabilityData[id] = feature.properties.camscdsq95;
           }
         });
+        
+        // Fetch operational catchment data for all waterbody IDs
+        if (waterbodyIds.length > 0) {
+          try {
+            const opcatResponse = await fetch(`/operational-catchments-by-ids?ids=${waterbodyIds.join(',')}`);
+            const opcatData = await opcatResponse.json();
+            opcatData.features.forEach(feature => {
+              const id = feature.attributes.WB_ID;
+              if (id) {
+                operationalCatchmentData[id] = {
+                  opcatId: feature.attributes.OPCAT_ID,
+                  opcatName: feature.attributes.OPCAT_NAME
+                };
+              }
+            });
+          } catch (error) {
+            console.error('Failed to load operational catchment data:', error);
+          }
+        }
         
         for (const id of waterbodyIds) {
           try {
@@ -130,10 +150,11 @@
               distance = turf.pointToLineDistance(postcodePoint, turf.polygonToLine(f.geometry), {units: 'meters'});
             }
             const availability = waterAvailabilityData[waterbodyId] || 'unknown';
+            const opcatInfo = operationalCatchmentData[waterbodyId];
             const bounds = turf.bbox(f.geometry);
             const center = turf.centroid(f.geometry).geometry.coordinates;
             
-            catchments.push({ name, distance, availability, waterbodyId, bounds, center, geometry: f.geometry });
+            catchments.push({ name, distance, availability, waterbodyId, opcatInfo, bounds, center, geometry: f.geometry });
           } else {
             // Group other waterbodies by waterbody ID
             if (!waterbodiesByWaterbodyId[waterbodyId]) {
@@ -179,7 +200,7 @@
                 <div class="feature-item" style="display: flex; align-items: flex-start; gap: 15px; margin-bottom: 15px;">
                   <div id="${thumbnailId}" style="width: 120px; height: 80px; border: 1px solid #ccc; flex-shrink: 0;"></div>
                   <div style="flex-grow: 1;">
-                    <span class="feature-name" style="font-size: 1.1em;">${f.name}</span>
+                    <span class="feature-name" style="font-size: 1.1em;">${f.name}${f.opcatInfo ? ` (${f.opcatInfo.opcatName})` : ''}</span>
                     <span class="feature-distance">${distanceText}</span>
                     <br>
                     <div style="margin: 5px 0;">

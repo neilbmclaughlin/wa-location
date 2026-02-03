@@ -11,6 +11,7 @@ const EA_WFS_URL = 'https://environment.data.gov.uk/spatialdata/water-resource-a
 const POSTCODES_API_URL = 'https://api.postcodes.io/postcodes'
 const CATCHMENT_API_URL = 'https://environment.data.gov.uk/catchment-planning/WaterBody'
 const MONITORING_SITES_URL = 'https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/ArcGIS/rest/services/WFD_monitoring_sites/FeatureServer/0/query'
+const RIVER_CATCHMENT_URL = 'https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/ArcGIS/rest/services/WFD_Cycle_2_River_catchment_classification/FeatureServer/5/query'
 
 const server = Hapi.server({
   port: 3000,
@@ -172,6 +173,31 @@ server.route({
     } catch (error) {
       console.error('Waterbody fetch error:', error)
       return h.response({ error: 'Failed to fetch waterbody data' }).code(500)
+    }
+  }
+})
+
+server.route({
+  method: 'GET',
+  path: '/operational-catchments-by-ids',
+  handler: {
+    proxy: {
+      mapUri: (request) => {
+        const { ids } = request.query
+
+        // Build WHERE clause for specific waterbody IDs
+        const idList = ids.split(',').map(id => `'${id.trim()}'`).join(',')
+        const whereClause = `WB_ID IN (${idList})`
+
+        const query = new URLSearchParams({
+          where: whereClause,
+          outFields: 'WB_ID,WB_NAME,OPCAT_ID,OPCAT_NAME',
+          f: 'json'
+        })
+
+        return { uri: `${RIVER_CATCHMENT_URL}?${query.toString()}` }
+      },
+      passThrough: true
     }
   }
 })
