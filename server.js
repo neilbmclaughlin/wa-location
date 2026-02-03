@@ -179,6 +179,23 @@ server.route({
 
 server.route({
   method: 'GET',
+  path: '/operational-catchment/{id}',
+  handler: async (request, h) => {
+    const { id } = request.params
+
+    try {
+      const response = await fetch(`https://environment.data.gov.uk/catchment-planning/OperationalCatchment/${id}.geojson`)
+      const data = await response.json()
+      return data
+    } catch (error) {
+      console.error('Operational catchment fetch error:', error)
+      return h.response({ error: 'Failed to fetch operational catchment data' }).code(500)
+    }
+  }
+})
+
+server.route({
+  method: 'GET',
   path: '/operational-catchments-by-ids',
   handler: {
     proxy: {

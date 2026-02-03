@@ -184,7 +184,7 @@
                 `${Math.round(f.distance)}m` : 
                 `${(f.distance/1000).toFixed(1)}km`;
               
-              const mapUrl = `/map?lat=${lat}&lng=${lng}&postcode=${postcode}&catchment=${encodeURIComponent(f.name)}&layers=waterbody`;
+              const mapUrl = `/map?lat=${lat}&lng=${lng}&postcode=${postcode}&catchment=${encodeURIComponent(f.name)}&layers=waterbody${f.opcatInfo ? `&opcatId=${f.opcatInfo.opcatId}` : ''}`;
               const status = statusMap[f.availability.toLowerCase()] || statusMap['grey'];
               
               // Create thumbnail map

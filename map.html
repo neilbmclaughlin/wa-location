@@ -52,6 +52,10 @@
       <label>
         <input type="checkbox" id="waterbodyToggle" checked> Waterbody Features
       </label>
+      <br>
+      <label>
+        <input type="checkbox" id="operationalToggle"> Operational Catchment
+      </label>
       <div id="waterLegend" style="margin-top: 10px;">
         <div><strong>Water Availability:</strong></div>
         <div id="legendItems"></div>
@@ -68,6 +72,7 @@
     const postcode = urlParams.get('postcode')
     const catchment = urlParams.get('catchment')
     const layers = urlParams.get('layers')
+    const opcatId = urlParams.get('opcatId')
     
     const map = L.map('map').setView([lat || 54.5, lng || -2.5], catchment ? 15 : (lat ? 12 : 6));
     
@@ -225,6 +230,7 @@
     // Add monitoring sites layer using GeoJSON
     let monitoringSitesLayer;
     let waterbodyLayer;
+    let operationalCatchmentLayer;
     let catchmentLabels = []; // Track catchment label markers
     let waterbodyFeatures = []; // Store waterbody features globally
     fetch('/monitoring-sites')
@@ -477,6 +483,34 @@
     
     document.getElementById('boundaryToggle').addEventListener('change', (e) => {
       addBoundaryLayer(); // Will check the toggle state inside the function
+    });
+    
+    // Load operational catchment if OPCAT ID is provided
+    if (opcatId) {
+      fetch(`/operational-catchment/${opcatId}`)
+        .then(response => response.json())
+        .then(data => {
+          operationalCatchmentLayer = L.geoJSON(data, {
+            style: {
+              color: '#00aa00',
+              weight: 3,
+              fillOpacity: 0.1
+            }
+          });
+          
+          if (document.getElementById('operationalToggle').checked) {
+            operationalCatchmentLayer.addTo(map);
+          }
+        })
+        .catch(error => console.error('Error loading operational catchment:', error));
+    }
+    
+    document.getElementById('operationalToggle').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        if (operationalCatchmentLayer) map.addLayer(operationalCatchmentLayer);
+      } else {
+        if (operationalCatchmentLayer) map.removeLayer(operationalCatchmentLayer);
+      }
     });
   </script>
 </body>
