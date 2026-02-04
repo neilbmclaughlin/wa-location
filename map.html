@@ -490,13 +490,42 @@
       fetch(`/operational-catchment/${opcatId}`)
         .then(response => response.json())
         .then(data => {
-          operationalCatchmentLayer = L.geoJSON(data, {
-            style: {
-              color: '#00aa00',
-              weight: 3,
-              fillOpacity: 0.1
+          // Create union of all polygons to get outer boundary only
+          let unionPolygon = null;
+          data.features.forEach(feature => {
+            if (feature.geometry) {
+              if (unionPolygon === null) {
+                unionPolygon = turf.feature(feature.geometry);
+              } else {
+                unionPolygon = turf.union(unionPolygon, turf.feature(feature.geometry));
+              }
             }
           });
+          
+          // Create layer group to hold both outer boundary and inner polygons
+          operationalCatchmentLayer = L.layerGroup();
+          
+          // Add outer boundary with thick line
+          if (unionPolygon) {
+            const outerBoundary = L.geoJSON(unionPolygon, {
+              style: {
+                color: '#00aa00',
+                weight: 3,
+                fillOpacity: 0
+              }
+            });
+            operationalCatchmentLayer.addLayer(outerBoundary);
+          }
+          
+          // Add inner polygons with thin lines
+          const innerPolygons = L.geoJSON(data, {
+            style: {
+              color: '#00aa00',
+              weight: 1,
+              fillOpacity: 0
+            }
+          });
+          operationalCatchmentLayer.addLayer(innerPolygons);
           
           if (document.getElementById('operationalToggle').checked) {
             operationalCatchmentLayer.addTo(map);
