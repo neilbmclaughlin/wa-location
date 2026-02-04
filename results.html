@@ -144,10 +144,49 @@
           if (type === 'Catchment') {
             // Calculate distance to catchment (0 if inside, distance to boundary if outside)
             let distance;
-            if (turf.booleanPointInPolygon(postcodePoint, f.geometry)) {
-              distance = 0; // Point is inside the polygon
-            } else {
-              distance = turf.pointToLineDistance(postcodePoint, turf.polygonToLine(f.geometry), {units: 'meters'});
+            try {
+              if (f.geometry.type === 'MultiPolygon') {
+                // For MultiPolygon, find distance to nearest polygon
+                const distances = f.geometry.coordinates.map((polygonCoords, index) => {
+                  const polygon = turf.polygon(polygonCoords);
+                  let polygonDistance;
+                  if (turf.booleanPointInPolygon(postcodePoint, polygon)) {
+                    polygonDistance = 0; // Inside this polygon
+                  } else {
+                    const line = turf.polygonToLine(polygon);
+                    if (line.geometry.type === 'MultiLineString') {
+                      polygonDistance = Math.min(...line.geometry.coordinates.map(coords => {
+                        const lineString = turf.lineString(coords);
+                        return turf.pointToLineDistance(postcodePoint, lineString, {units: 'meters'});
+                      }));
+                    } else {
+                      polygonDistance = turf.pointToLineDistance(postcodePoint, line, {units: 'meters'});
+                    }
+                  }
+                  return polygonDistance;
+                });
+                distance = Math.min(...distances);
+              } else if (turf.booleanPointInPolygon(postcodePoint, f.geometry)) {
+                distance = 0; // Point is inside the polygon
+              } else {
+                const line = turf.polygonToLine(f.geometry);
+                if (line && line.geometry && line.geometry.coordinates) {
+                  if (line.geometry.type === 'MultiLineString') {
+                    distance = Math.min(...line.geometry.coordinates.map(coords => {
+                      const lineString = turf.lineString(coords);
+                      return turf.pointToLineDistance(postcodePoint, lineString, {units: 'meters'});
+                    }));
+                  } else {
+                    distance = turf.pointToLineDistance(postcodePoint, line, {units: 'meters'});
+                  }
+                } else {
+                  distance = 0;
+                }
+              }
+            } catch (error) {
+              console.warn('Error calculating distance for feature:', name, error);
+              const centroid = turf.centroid(f.geometry);
+              distance = turf.distance(postcodePoint, centroid, {units: 'meters'});
             }
             const availability = waterAvailabilityData[waterbodyId] || 'unknown';
             const opcatInfo = operationalCatchmentData[waterbodyId];
