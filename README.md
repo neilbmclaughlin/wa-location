@@ -37,10 +37,10 @@ A web application that displays water availability data and related hydrological
 - **Format**: WMS tiles
 
 ### Monitoring Sites
-- **Source**: Environment Agency ArcGIS REST Service
-- **Service**: `https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/ArcGIS/rest/services/WFD_monitoring_sites/FeatureServer`
-- **Content**: Water Framework Directive monitoring site locations
-- **Format**: GeoJSON from ArcGIS FeatureServer
+- **Source**: Environment Agency Hydrology API
+- **Service**: `https://environment.data.gov.uk/hydrology/id/stations`
+- **Content**: Hydrological monitoring stations including river flows, levels, groundwater, rainfall, and water quality
+- **Format**: JSON transformed to GeoJSON
 - **Display**: Orange circle markers with popup data, rendered above other layers
 
 ### Waterbody Features

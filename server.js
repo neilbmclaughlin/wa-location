@@ -10,7 +10,7 @@ const EA_WMS_URL = 'https://environment.data.gov.uk/spatialdata/water-resource-a
 const EA_WFS_URL = 'https://environment.data.gov.uk/spatialdata/water-resource-availability-and-abstraction-reliability-cycle-2/wfs'
 const POSTCODES_API_URL = 'https://api.postcodes.io/postcodes'
 const CATCHMENT_API_URL = 'https://environment.data.gov.uk/catchment-planning/WaterBody'
-const MONITORING_SITES_URL = 'https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/ArcGIS/rest/services/WFD_monitoring_sites/FeatureServer/0/query'
+const HYDROLOGY_API_URL = 'https://environment.data.gov.uk/hydrology'
 const RIVER_CATCHMENT_URL = 'https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/ArcGIS/rest/services/WFD_Cycle_2_River_catchment_classification/FeatureServer/5/query'
 
 const server = Hapi.server({
@@ -223,13 +223,65 @@ server.route({
   method: 'GET',
   path: '/monitoring-sites',
   handler: async (request, h) => {
+    const { lat, lng, radius } = request.query
+
     try {
-      const response = await fetch(`${MONITORING_SITES_URL}?where=1%3D1&outFields=*&f=geojson`)
+      let url
+      if (lat && lng && radius) {
+        // Convert radius from meters to kilometers
+        const radiusInKm = parseFloat(radius) / 1000
+
+        const query = new URLSearchParams({
+          lat,
+          long: lng,
+          dist: radiusInKm,
+          _limit: '1000'
+        })
+
+        url = `${HYDROLOGY_API_URL}/id/stations.json?${query.toString()}`
+      } else {
+        // Get all stations with limit
+        const query = new URLSearchParams({
+          _limit: '1000'
+        })
+
+        url = `${HYDROLOGY_API_URL}/id/stations.json?${query.toString()}`
+      }
+
+      console.log('Hydrology API URL:', url)
+
+      const response = await fetch(url)
       const data = await response.json()
-      return data
+
+      // Transform to GeoJSON format
+      const geojson = {
+        type: 'FeatureCollection',
+        features: data.items.map(station => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [station.long, station.lat]
+          },
+          properties: {
+            id: station.notation,
+            label: station.label,
+            riverName: station.riverName,
+            stationGuid: station.stationGuid,
+            wiskiID: station.wiskiID,
+            RLOIid: station.RLOIid,
+            observedProperty: station.observedProperty?.map(prop => prop.label || prop['@id']).join(', '),
+            status: station.status?.map(s => s.label).join(', '),
+            measures: station.measures?.map(m => m.parameter).join(', '),
+            dateOpened: station.dateOpened,
+            catchmentArea: station.catchmentArea
+          }
+        }))
+      }
+
+      return geojson
     } catch (error) {
-      console.error('Monitoring sites fetch error:', error)
-      return h.response({ error: 'Failed to fetch monitoring sites' }).code(500)
+      console.error('Hydrology API fetch error:', error)
+      return h.response({ error: 'Failed to fetch hydrology stations' }).code(500)
     }
   }
 })
